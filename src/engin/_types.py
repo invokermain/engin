@@ -1,3 +1,3 @@
 from typing import TypeAlias
 
-TypeKey: TypeAlias = str
+TypeId: TypeAlias = str

@@ -1,99 +1,31 @@
 import logging
 from asyncio import Event
 from collections.abc import Iterable
-from inspect import BoundArguments, Signature
-from typing import Any, TypeAlias, Union
+from typing import TypeAlias
 
-from typing_extensions import TypeVar
-
-from engin._dependency import Dependency, Invoke, Provide
-from engin._types import TypeKey
-from engin._utils import type_to_key
+from engin._assembler import AssembledDependency, Assembler
+from engin._dependency import Dependency, Invoke, Provide, Supply
+from engin._module import Module
+from engin._types import TypeId
 
 LOG = logging.getLogger(__name__)
 
-Option: TypeAlias = Union[Invoke, Provide, "Module"]
-
-
-class Module:
-    def __init__(self, name: str, *options: Option) -> None:
-        self._name = name
-        self._options = options
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def options(self) -> list[Option]:
-        return list(self._options)
-
-
-T = TypeVar("T")
-
-
-class DependencyManager:
-    def __init__(self, providers: dict[TypeKey, Provide]) -> None:
-        self._providers = providers
-        self._dependencies: dict[TypeKey, Any] = {}
-
-    def _resolve_providers(self, target: TypeKey) -> list[Provide]:
-        provider = self._providers.get(target)
-        if provider is None:
-            raise LookupError(f"No Provider registered for dependency '{target}'")
-        required_providers = [
-            provider
-            for provider_param in provider.parameter_types
-            for provider in self._resolve_providers(provider_param)
-        ]
-        return [*required_providers, provider]
-
-    async def _satisfy(self, target: TypeKey) -> None:
-        providers = self._resolve_providers(target)
-        for provider in providers:
-            bound_args = await self.bind_arguments(provider.signature)
-            self._dependencies[provider.return_type] = await provider(
-                *bound_args.args, **bound_args.kwargs
-            )
-
-    async def bind_arguments(self, signature: Signature) -> BoundArguments:
-        args = []
-        kwargs = {}
-        for param_name, param in signature.parameters.items():
-            param_key = type_to_key(param.annotation)
-            if param_key not in self._dependencies:
-                await self._satisfy(param_key)
-            val = self._dependencies[param_key]
-            if param.kind == param.POSITIONAL_ONLY:
-                args.append(val)
-            else:
-                kwargs[param.name] = val
-
-        return signature.bind(*args, **kwargs)
-
-    def get_provider(self, return_type: type) -> Provide:
-        return self._providers[type_to_key(return_type)]
+Option: TypeAlias = Invoke | Provide | Supply | Module
+_Opt: TypeAlias = Invoke | Provide | Supply
 
 
 class Engin:
     def __init__(self, *options: Option) -> None:
-        self._providers: dict[TypeKey, Provide] = {}
+        self._providers: dict[TypeId, Provide] = {}
         self._invokables: list[Invoke] = []
         self._stop_event = Event()
 
         self._destruct_options(options)
-        self._dependency_manager = DependencyManager(self._providers)
+        self._assembler = Assembler(self._providers.values())
 
-    def _destruct_options(self, options: Iterable[Option]):
-        for opt in options:
-            if isinstance(opt, Module):
-                self._destruct_options(opt.options)
-            if isinstance(opt, Provide):
-                LOG.debug(f"PROVIDE\t{opt}")
-                self._providers[opt.return_type] = opt
-            elif isinstance(opt, Invoke):
-                LOG.debug(f"INVOKE\t{opt}")
-                self._invokables.append(opt)
+    @property
+    def assembler(self) -> Assembler:
+        return self._assembler
 
     async def run(self):
         await self.start()
@@ -106,11 +38,41 @@ class Engin:
         # lifecycle shutdown
 
     async def start(self) -> None:
-        for invocation in self._invokables:
-            bound_args = await self._dependency_manager.bind_arguments(invocation.signature)
-            await invocation(*bound_args.args, **bound_args.kwargs)
+        LOG.info("starting ngyn")
+        assembled_invocations: list[AssembledDependency] = [
+            await self._assembler.assemble(invocation) for invocation in self._invokables
+        ]
+        for invocation in assembled_invocations:
+            await invocation()
 
         self._stop_event = Event()
 
     async def stop(self) -> None:
         self._stop_event.set()
+
+    def _destruct_options(self, options: Iterable[Option]):
+        for opt in options:
+            if isinstance(opt, Module):
+                self._destruct_options(opt)
+            if isinstance(opt, (Provide, Supply)):
+                existing = self._providers.get(opt.return_type_id)
+                self._log_option(opt, overwrites=existing)
+                self._providers[opt.return_type_id] = opt
+            elif isinstance(opt, Invoke):
+                self._log_option(opt)
+                self._invokables.append(opt)
+
+    @staticmethod
+    def _log_option(opt: Dependency, overwrites: Dependency | None = None) -> None:
+        if overwrites is not None:
+            extra = f"\tOVERWRITES {overwrites.name}"
+            if overwrites.module_name:
+                extra += f" [{overwrites.module_name}]"
+        else:
+            extra = ""
+        if isinstance(opt, Provide):
+            LOG.debug(f"PROVIDE {opt.return_type_id:<35} <- {opt.name}() {extra}")
+        elif isinstance(opt, Supply):
+            LOG.debug(f"SUPPLY  {opt.return_type_id:<35}{extra}")
+        elif isinstance(opt, Invoke):
+            LOG.debug(f"INVOKE {opt.name:<40}")
