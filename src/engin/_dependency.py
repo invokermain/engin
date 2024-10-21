@@ -1,7 +1,7 @@
 import inspect
 import typing
 from abc import ABC
-from inspect import BoundArguments, Signature, isclass, iscoroutinefunction
+from inspect import Signature, isclass, iscoroutinefunction
 from typing import (
     Any,
     Awaitable,
@@ -15,19 +15,18 @@ from typing import (
     get_type_hints,
 )
 
-from engin._types import TypeId
-from engin._utils import type_id_of
+from engin._type_utils import TypeId, type_id_of
 
 P = ParamSpec("P")
 T = TypeVar("T")
 Func: TypeAlias = Callable[P, T] | Callable[P, Awaitable[T]]
+_SELF = object()
 
 
 class Dependency(ABC, Generic[P, T]):
     def __init__(self, func: Func[P, T], module_name: str | None = None) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
-        self._bound_arguments: BoundArguments | None = None
         self._signature = inspect.signature(self._func)
         self._module_name = module_name
 
@@ -41,6 +40,11 @@ class Dependency(ABC, Generic[P, T]):
 
     @property
     def parameter_types(self) -> list[TypeId]:
+        parameters = list(self._signature.parameters.values())
+        if not parameters:
+            return []
+        if parameters[0].name == "self":
+            parameters.pop(0)
         return [type_id_of(param.annotation) for param in self._signature.parameters.values()]
 
     @property
@@ -90,7 +94,7 @@ class Provide(Dependency[Any, T]):
         return return_type
 
     @property
-    def return_type_id(self) -> str:
+    def return_type_id(self) -> TypeId:
         return type_id_of(self.return_type)
 
     @property

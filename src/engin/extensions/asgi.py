@@ -1,13 +1,11 @@
-import logging
 import traceback
 import typing
-from typing import Any, Protocol, TypeAlias
+from typing import Protocol, TypeAlias
 
 from engin import Engin, Option
 
 __all__ = ["ASGIEngin", "ASGIType"]
 
-from engin._assembler import AssembledDependency
 
 Scope: TypeAlias = typing.MutableMapping[str, typing.Any]
 Message: TypeAlias = typing.MutableMapping[str, typing.Any]
@@ -20,9 +18,6 @@ class ASGIType(Protocol):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None: ...
 
 
-LOG = logging.getLogger(__name__)
-
-
 class ASGIEngin(Engin, ASGIType):
     _asgi_app: ASGIType
 
@@ -33,10 +28,8 @@ class ASGIEngin(Engin, ASGIType):
             raise LookupError("A provider for `ASGIType` was expected, none found")
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        LOG.info(scope)
         if scope["type"] == "lifespan":
             message = await receive()
-            LOG.info(message)
             receive = _Rereceive(message)
             if message["type"] == "lifespan.startup":
                 try:
@@ -51,12 +44,8 @@ class ASGIEngin(Engin, ASGIType):
         await self._asgi_app(scope, receive, send)
 
     async def _startup(self) -> None:
-        LOG.info("starting up")
         await self.start()
-        assembled_dependency: AssembledDependency[ASGIType] = await self._assembler.assemble(
-            self._asgi_provider
-        )
-        self._asgi_app = await assembled_dependency()
+        self._asgi_app = await self._assembler.get(ASGIType)
 
 
 class _Rereceive:
