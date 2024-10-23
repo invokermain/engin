@@ -3,9 +3,9 @@ from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.routing import Route
+from starlette.routing import Mount, Route
 
-from engin import Module, provide
+from engin import Block, invoke, provide
 from engin.extensions.asgi import ASGIType
 
 
@@ -18,10 +18,12 @@ class HealthCheckEndpoint(HTTPEndpoint):
         return JSONResponse({"ok": True})
 
 
-class AppModule(Module):
+class AppBlock(Block):
     @provide
-    def app_factory(self, routes: list[Route], app_config: AppConfig) -> ASGIType:
-        return Starlette(routes=routes, debug=app_config.debug)
+    def app_factory(
+        self, routes: list[Route], mounts: list[Mount], app_config: AppConfig
+    ) -> ASGIType:
+        return Starlette(routes=[*routes, *mounts], debug=app_config.debug)
 
     @provide
     def default_routes(self) -> list[Route]:

@@ -1,5 +1,6 @@
 from engin import Provide
 from engin._dependency import Supply
+from tests.deps import make_aliased_int
 
 
 def test_provide_discriminates_singluar():
@@ -38,3 +39,9 @@ def test_supply_multi():
     assert supply.return_type_id.type is Foo
     assert supply.return_type_id.multi
     assert supply.is_multiprovider
+
+
+def test_provide_with_alias():
+    provider = Provide(make_aliased_int)
+
+    assert provider.return_type_id.type

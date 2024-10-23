@@ -5,14 +5,14 @@ from itertools import chain
 from typing import ClassVar, TypeAlias
 
 from engin._assembler import AssembledDependency, Assembler
+from engin._block import Block
 from engin._dependency import Dependency, Invoke, Provide, Supply
 from engin._lifecycle import Lifecycle
-from engin._module import Module
 from engin._type_utils import TypeId
 
 LOG = logging.getLogger(__name__)
 
-Option: TypeAlias = Invoke | Provide | Supply | Module
+Option: TypeAlias = Invoke | Provide | Supply | Block
 _Opt: TypeAlias = Invoke | Provide | Supply
 
 
@@ -24,7 +24,7 @@ class Engin:
         self._invokables: list[Invoke] = []
         self._stop_event = Event()
 
-        self._destruct_options(options)
+        self._destruct_options(chain(self._LIB_OPTIONS, options))
         self._assembler = Assembler(self._providers.values())
 
     @property
@@ -42,7 +42,7 @@ class Engin:
         # lifecycle shutdown
 
     async def start(self) -> None:
-        LOG.info("starting ngyn")
+        LOG.info("starting engin")
         assembled_invocations: list[AssembledDependency] = [
             await self._assembler.assemble(invocation) for invocation in self._invokables
         ]
@@ -57,8 +57,8 @@ class Engin:
         self._stop_event.set()
 
     def _destruct_options(self, options: Iterable[Option]):
-        for opt in chain(self._LIB_OPTIONS, options):
-            if isinstance(opt, Module):
+        for opt in options:
+            if isinstance(opt, Block):
                 self._destruct_options(opt)
             if isinstance(opt, (Provide, Supply)):
                 existing = self._providers.get(opt.return_type_id)
@@ -72,13 +72,13 @@ class Engin:
     def _log_option(opt: Dependency, overwrites: Dependency | None = None) -> None:
         if overwrites is not None:
             extra = f"\tOVERWRITES {overwrites.name}"
-            if overwrites.module_name:
-                extra += f" [{overwrites.module_name}]"
+            if overwrites.block_name:
+                extra += f" [{overwrites.block_name}]"
         else:
             extra = ""
-        if isinstance(opt, Provide):
-            LOG.debug(f"PROVIDE {str(opt.return_type_id):<35} <- {opt.name}() {extra}")
-        elif isinstance(opt, Supply):
+        if isinstance(opt, Supply):
             LOG.debug(f"SUPPLY  {str(opt.return_type_id):<35}{extra}")
+        elif isinstance(opt, Provide):
+            LOG.debug(f"PROVIDE {str(opt.return_type_id):<35} <- {opt.name}() {extra}")
         elif isinstance(opt, Invoke):
-            LOG.debug(f"INVOKE {opt.name:<40}")
+            LOG.debug(f"INVOKE  {opt.name:<35}")

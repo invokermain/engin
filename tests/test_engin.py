@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from engin import Engin, Invoke, Provide
-from tests.deps import AModule
+from tests.deps import ABlock
 
 
 class A:
@@ -34,12 +34,12 @@ async def test_engin():
     await engin.start()
 
 
-async def test_engin_with_module():
+async def test_engin_with_block():
     def main(dt: datetime, floats: list[float]) -> None:
         assert isinstance(dt, datetime)
         assert isinstance(floats, list)
         assert all(isinstance(x, float) for x in floats)
 
-    engin = Engin(AModule(), Invoke(main))
+    engin = Engin(ABlock(), Invoke(main))
 
     await engin.start()

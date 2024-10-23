@@ -24,19 +24,22 @@ _SELF = object()
 
 
 class Dependency(ABC, Generic[P, T]):
-    def __init__(self, func: Func[P, T], module_name: str | None = None) -> None:
+    def __init__(self, func: Func[P, T], block_name: str | None = None) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
         self._signature = inspect.signature(self._func)
-        self._module_name = module_name
+        self._block_name = block_name
 
     @property
-    def module_name(self) -> str | None:
-        return self._module_name
+    def block_name(self) -> str | None:
+        return self._block_name
 
     @property
     def name(self) -> str:
-        return f"{self._func.__module__}.{self._func.__name__}"
+        if self._block_name:
+            return f"{self._block_name}.{self._func.__name__}"
+        else:
+            return f"{self._func.__module__}.{self._func.__name__}"
 
     @property
     def parameter_types(self) -> list[TypeId]:
@@ -45,14 +48,14 @@ class Dependency(ABC, Generic[P, T]):
             return []
         if parameters[0].name == "self":
             parameters.pop(0)
-        return [type_id_of(param.annotation) for param in self._signature.parameters.values()]
+        return [type_id_of(param.annotation) for param in parameters]
 
     @property
     def signature(self) -> Signature:
         return self._signature
 
-    def set_module_name(self, name: str) -> None:
-        self._module_name = name
+    def set_block_name(self, name: str) -> None:
+        self._block_name = name
 
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         if self._is_async:
@@ -62,16 +65,16 @@ class Dependency(ABC, Generic[P, T]):
 
 
 class Invoke(Dependency):
-    def __init__(self, invocation: Func[P, T], module_name: str | None = None):
-        super().__init__(func=invocation, module_name=module_name)
+    def __init__(self, invocation: Func[P, T], block_name: str | None = None):
+        super().__init__(func=invocation, block_name=block_name)
 
     def __str__(self) -> str:
         return f"Invoke({self.name})"
 
 
 class Provide(Dependency[Any, T]):
-    def __init__(self, builder: Func[P, T], module_name: str | None = None):
-        super().__init__(func=builder, module_name=module_name)
+    def __init__(self, builder: Func[P, T], block_name: str | None = None):
+        super().__init__(func=builder, block_name=block_name)
         self._is_multi = typing.get_origin(self.return_type) is list
 
         if self._is_multi:
@@ -105,16 +108,23 @@ class Provide(Dependency[Any, T]):
         return hash(self.return_type_id)
 
     def __str__(self) -> str:
-        return f"Provide({self.name}() -> {self.return_type_id})"
+        return f"Provide({self.return_type_id})"
 
 
 class Supply(Provide, Generic[T]):
-    def __init__(self, value: T, module_name: str | None = None):
+    def __init__(
+        self, value: T, *, type_hint: type | None = None, block_name: str | None = None
+    ):
         self._value = value
-        super().__init__(builder=self._get_val, module_name=module_name)
+        self._type_hint = type_hint
+        if self._type_hint is not None:
+            self._get_val.__annotations__["return"] = type_hint
+        super().__init__(builder=self._get_val, block_name=block_name)
 
     @property
     def return_type(self) -> Type[T]:
+        if self._type_hint is not None:
+            return self._type_hint
         if isinstance(self._value, list):
             return list[type(self._value[0])]  # type: ignore[misc,return-value]
         return type(self._value)

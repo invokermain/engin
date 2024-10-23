@@ -1,8 +1,8 @@
-from engin import Engin, Module, invoke, provide
+from engin import Block, Engin, invoke, provide
 
 
-def test_module():
-    class MyModule(Module):
+def test_block():
+    class MyBlock(Block):
         @provide
         def provide_int(self) -> int:
             return 3
@@ -11,9 +11,9 @@ def test_module():
         def invoke_square(self, some: int) -> None:
             return some**2
 
-    my_module = MyModule()
+    my_block = MyBlock()
 
-    options = list(iter(my_module))
+    options = list(iter(my_block))
     assert len(options) == 2
 
-    assert Engin(my_module)
+    assert Engin(my_block)

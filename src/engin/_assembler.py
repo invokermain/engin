@@ -1,11 +1,15 @@
+import asyncio
+import logging
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
 from typing import Any, Generic, TypeVar
 
-from engin._dependency import Dependency, Provide
-from engin._type_utils import TypeId, is_multi_type, type_id_of
+from engin._dependency import Dependency, Provide, Supply
+from engin._type_utils import TypeId, type_id_of
+
+LOG = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -24,6 +28,8 @@ class Assembler:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._dependencies: dict[TypeId, Any] = {}
+        self._consumed_providers: set[Provide[Any]] = set()
+        self._lock = asyncio.Lock()
 
         for provider in providers:
             type_id = provider.return_type_id
@@ -34,13 +40,17 @@ class Assembler:
             else:
                 self._multiproviders[type_id].append(provider)
 
-    def _resolve_providers(self, type_id: TypeId) -> list[Provide]:
+    def _resolve_providers(self, type_id: TypeId) -> Collection[Provide]:
         if type_id.multi:
             providers = self._multiproviders.get(type_id)
         else:
             providers = [provider] if (provider := self._providers.get(type_id)) else None
         if not providers:
-            raise LookupError(f"No Provider registered for dependency '{type_id}'")
+            if type_id.multi:
+                LOG.warning(f"no provider for '{type_id}' defaulting to empty list")
+                providers = [(Supply([], type_hint=type_id.type))]
+            else:
+                raise LookupError(f"No Provider registered for dependency '{type_id}'")
 
         required_providers: list[Provide[Any]] = []
         for provider in providers:
@@ -50,20 +60,23 @@ class Assembler:
                 for provider in self._resolve_providers(provider_param)
             )
 
-        return [*required_providers, *providers]
+        return {*required_providers, *providers}
 
     async def _satisfy(self, target: TypeId) -> None:
-        providers = self._resolve_providers(target)
-        for provider in providers:
+        for provider in self._resolve_providers(target):
+            if provider in self._consumed_providers:
+                continue
+            self._consumed_providers.add(provider)
+            type_id = provider.return_type_id
             bound_args = await self._bind_arguments(provider.signature)
             value = await provider(*bound_args.args, **bound_args.kwargs)
             if provider.is_multiprovider:
-                if target in self._dependencies:
-                    self._dependencies[target].extend(value)
+                if type_id in self._dependencies:
+                    self._dependencies[type_id].extend(value)
                 else:
-                    self._dependencies[target] = value
+                    self._dependencies[type_id] = value
             else:
-                self._dependencies[target] = value
+                self._dependencies[type_id] = value
 
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
@@ -73,7 +86,9 @@ class Assembler:
                 args.append(object())
                 continue
             param_key = type_id_of(param.annotation)
-            if param_key not in self._dependencies:
+            async with self._lock:
+                has_dependency = param_key in self._dependencies
+            if not has_dependency:
                 await self._satisfy(param_key)
             val = self._dependencies[param_key]
             if param.kind == param.POSITIONAL_ONLY:

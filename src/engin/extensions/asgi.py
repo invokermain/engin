@@ -7,15 +7,14 @@ from engin import Engin, Option
 __all__ = ["ASGIEngin", "ASGIType"]
 
 
-Scope: TypeAlias = typing.MutableMapping[str, typing.Any]
-Message: TypeAlias = typing.MutableMapping[str, typing.Any]
-Receive: TypeAlias = typing.Callable[[], typing.Awaitable[Message]]
-Send: TypeAlias = typing.Callable[[Message], typing.Awaitable[None]]
-ASGIApp: TypeAlias = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
+_Scope: TypeAlias = typing.MutableMapping[str, typing.Any]
+_Message: TypeAlias = typing.MutableMapping[str, typing.Any]
+_Receive: TypeAlias = typing.Callable[[], typing.Awaitable[_Message]]
+_Send: TypeAlias = typing.Callable[[_Message], typing.Awaitable[None]]
 
 
 class ASGIType(Protocol):
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None: ...
+    async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None: ...
 
 
 class ASGIEngin(Engin, ASGIType):
@@ -27,7 +26,7 @@ class ASGIEngin(Engin, ASGIType):
         if not self._assembler.has(ASGIType):
             raise LookupError("A provider for `ASGIType` was expected, none found")
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
         if scope["type"] == "lifespan":
             message = await receive()
             receive = _Rereceive(message)
@@ -49,8 +48,8 @@ class ASGIEngin(Engin, ASGIType):
 
 
 class _Rereceive:
-    def __init__(self, message: Message) -> None:
+    def __init__(self, message: _Message) -> None:
         self._message = message
 
-    async def __call__(self, *args, **kwargs) -> Message:
+    async def __call__(self, *args, **kwargs) -> _Message:
         return self._message
