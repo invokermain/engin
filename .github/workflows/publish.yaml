@@ -20,8 +20,8 @@ jobs:
       - name: Set up Python
         run: uv python install
 
-      - name: Install the project
-        run: uv sync --dev
+      - name: Build the Project
+        run: uv build
 
       - name: Publish
         run: uv publish
