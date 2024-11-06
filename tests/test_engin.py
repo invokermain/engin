@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from engin import Engin, Invoke, Provide
+import pytest
+
+from engin import AssemblyError, Engin, Entrypoint, Invoke, Provide
 from tests.deps import ABlock
 
 
@@ -43,3 +45,31 @@ async def test_engin_with_block():
     engin = Engin(ABlock(), Invoke(main))
 
     await engin.start()
+
+
+async def test_engin_error_handling():
+    async def raise_value_error() -> int:
+        raise ValueError("foo")
+
+    async def main(foo: int) -> None:
+        return
+
+    engin = Engin(Provide(raise_value_error), Invoke(main))
+
+    with pytest.raises(AssemblyError, match="foo"):
+        await engin.run()
+
+
+async def test_engin_with_entrypoint():
+    provider_called = False
+
+    def a() -> A:
+        nonlocal provider_called
+        provider_called = True
+        return A()
+
+    engin = Engin(Provide(a), Entrypoint(A))
+
+    await engin.start()
+
+    assert provider_called

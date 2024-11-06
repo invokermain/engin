@@ -7,9 +7,10 @@ from inspect import BoundArguments, Signature
 from typing import Any, Generic, TypeVar
 
 from engin._dependency import Dependency, Provide, Supply
+from engin._exceptions import AssemblyError
 from engin._type_utils import TypeId, type_id_of
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("engin")
 
 T = TypeVar("T")
 
@@ -48,7 +49,7 @@ class Assembler:
         if not providers:
             if type_id.multi:
                 LOG.warning(f"no provider for '{type_id}' defaulting to empty list")
-                providers = [(Supply([], type_hint=type_id.type))]
+                providers = [(Supply([], type_hint=list[type_id.type]))]
             else:
                 raise LookupError(f"No Provider registered for dependency '{type_id}'")
 
@@ -69,7 +70,12 @@ class Assembler:
             self._consumed_providers.add(provider)
             type_id = provider.return_type_id
             bound_args = await self._bind_arguments(provider.signature)
-            value = await provider(*bound_args.args, **bound_args.kwargs)
+            try:
+                value = await provider(*bound_args.args, **bound_args.kwargs)
+            except Exception as err:
+                raise AssemblyError(
+                    provider=provider, error_type=type(err), error_message=str(err)
+                ) from err
             if provider.is_multiprovider:
                 if type_id in self._dependencies:
                     self._dependencies[type_id].extend(value)
@@ -86,8 +92,7 @@ class Assembler:
                 args.append(object())
                 continue
             param_key = type_id_of(param.annotation)
-            async with self._lock:
-                has_dependency = param_key in self._dependencies
+            has_dependency = param_key in self._dependencies
             if not has_dependency:
                 await self._satisfy(param_key)
             val = self._dependencies[param_key]
@@ -99,10 +104,11 @@ class Assembler:
         return signature.bind(*args, **kwargs)
 
     async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
-        return AssembledDependency(
-            dependency=dependency,
-            bound_args=await self._bind_arguments(dependency.signature),
-        )
+        async with self._lock:
+            return AssembledDependency(
+                dependency=dependency,
+                bound_args=await self._bind_arguments(dependency.signature),
+            )
 
     async def get(self, type_: type[T]) -> T:
         type_id = type_id_of(type_)

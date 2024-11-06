@@ -2,6 +2,8 @@ import typing
 from dataclasses import dataclass
 from typing import Any
 
+_implict_modules = ["builtins", "typing", "collections.abc"]
+
 
 @dataclass(frozen=True, eq=True)
 class TypeId:
@@ -17,10 +19,9 @@ class TypeId:
             return TypeId(type=type_, multi=False)
 
     def __str__(self) -> str:
-        out = f"{self.type.__module__}." if self.type.__module__ != "builtins" else ""
-        out += self.type.__name__
-        if typing.get_args(self.type):
-            out += _args_to_str(self.type)
+        module = self.type.__module__
+        out = f"{module}." if module not in _implict_modules else ""
+        out += _args_to_str(self.type)
         if self.multi:
             out += "[]"
         return out
@@ -29,7 +30,7 @@ class TypeId:
 def _args_to_str(type_: Any) -> str:
     args = typing.get_args(type_)
     if args:
-        arg_str = "["
+        arg_str = f"{type_.__name__}["
         for idx, arg in enumerate(args):
             if isinstance(arg, list):
                 arg_str += "["
@@ -41,7 +42,7 @@ def _args_to_str(type_: Any) -> str:
             elif typing.get_args(arg):
                 arg_str += _args_to_str(arg)
             else:
-                arg_str += f"{arg.__name__}"
+                arg_str += getattr(arg, "__name__", str(arg))
             if idx < len(args) - 1:
                 arg_str += ", "
         arg_str += "]"

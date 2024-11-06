@@ -1,7 +1,7 @@
 import inspect
 import typing
 from abc import ABC
-from inspect import Signature, isclass, iscoroutinefunction
+from inspect import Parameter, Signature, isclass, iscoroutinefunction
 from typing import (
     Any,
     Awaitable,
@@ -19,8 +19,13 @@ from engin._type_utils import TypeId, type_id_of
 
 P = ParamSpec("P")
 T = TypeVar("T")
-Func: TypeAlias = Callable[P, T] | Callable[P, Awaitable[T]]
+Func: TypeAlias = (
+    Callable[P, T] | Callable[P, Awaitable[T]] | Callable[[], T] | Callable[[], Awaitable[T]]
+)
 _SELF = object()
+
+
+def _noop(*args, **kwargs) -> None: ...
 
 
 class Dependency(ABC, Generic[P, T]):
@@ -70,6 +75,27 @@ class Invoke(Dependency):
 
     def __str__(self) -> str:
         return f"Invoke({self.name})"
+
+
+class Entrypoint(Invoke):
+    def __init__(self, type_: Type[Any], *, block_name: str | None = None) -> None:
+        self._type = type_
+        super().__init__(invocation=_noop, block_name=block_name)
+
+    @property
+    def parameter_types(self) -> list[TypeId]:
+        return [type_id_of(self._type)]
+
+    @property
+    def signature(self) -> Signature:
+        return Signature(
+            parameters=[
+                Parameter(name="x", kind=Parameter.POSITIONAL_ONLY, annotation=self._type)
+            ]
+        )
+
+    def __str__(self) -> str:
+        return f"Entrypoint({type_id_of(self._type)})"
 
 
 class Provide(Dependency[Any, T]):
@@ -133,4 +159,4 @@ class Supply(Provide, Generic[T]):
         return self._value
 
     def __str__(self) -> str:
-        return f"Supply({self.name} -> {self.return_type_id})"
+        return f"Supply({self.return_type_id})"

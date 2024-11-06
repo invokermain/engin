@@ -20,7 +20,7 @@ class Block(Iterable[Provide | Invoke]):
 
     def __init__(self, /, block_name: str | None = None) -> None:
         self._options: list[Provide | Invoke] = []
-        self._name = block_name or f"{type(self).__module__}.{type(self).__name__}"
+        self._name = block_name or f"{type(self).__name__}"
         for _, method in inspect.getmembers(self):
             if opt := getattr(method, "_opt", None):
                 if not isinstance(opt, (Provide, Invoke)):

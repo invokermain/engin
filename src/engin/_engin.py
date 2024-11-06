@@ -4,13 +4,14 @@ from collections.abc import Iterable
 from itertools import chain
 from typing import ClassVar, TypeAlias
 
+from engin import Entrypoint
 from engin._assembler import AssembledDependency, Assembler
 from engin._block import Block
 from engin._dependency import Dependency, Invoke, Provide, Supply
 from engin._lifecycle import Lifecycle
-from engin._type_utils import TypeId
+from engin._type_utils import TypeId, type_id_of
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("engin")
 
 Option: TypeAlias = Invoke | Provide | Supply | Block
 _Opt: TypeAlias = Invoke | Provide | Supply
@@ -52,6 +53,7 @@ class Engin:
         lifecycle = await self._assembler.get(Lifecycle)
         await lifecycle.startup()
         self._stop_event = Event()
+        LOG.info("startup complete")
 
     async def stop(self) -> None:
         self._stop_event.set()
@@ -77,8 +79,11 @@ class Engin:
         else:
             extra = ""
         if isinstance(opt, Supply):
-            LOG.debug(f"SUPPLY  {str(opt.return_type_id):<35}{extra}")
+            LOG.debug(f"SUPPLY      {str(opt.return_type_id):<35}{extra}")
         elif isinstance(opt, Provide):
-            LOG.debug(f"PROVIDE {str(opt.return_type_id):<35} <- {opt.name}() {extra}")
+            LOG.debug(f"PROVIDE     {str(opt.return_type_id):<35} <- {opt.name}() {extra}")
+        elif isinstance(opt, Entrypoint):
+            type_id = opt.parameter_types[0]
+            LOG.debug(f"ENTRYPOINT  {str(type_id):<35}")
         elif isinstance(opt, Invoke):
-            LOG.debug(f"INVOKE  {opt.name:<35}")
+            LOG.debug(f"INVOKE      {opt.name:<35}")
