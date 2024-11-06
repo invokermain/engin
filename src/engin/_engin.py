@@ -9,7 +9,7 @@ from engin._assembler import AssembledDependency, Assembler
 from engin._block import Block
 from engin._dependency import Dependency, Invoke, Provide, Supply
 from engin._lifecycle import Lifecycle
-from engin._type_utils import TypeId, type_id_of
+from engin._type_utils import TypeId
 
 LOG = logging.getLogger("engin")
 
@@ -79,11 +79,11 @@ class Engin:
         else:
             extra = ""
         if isinstance(opt, Supply):
-            LOG.debug(f"SUPPLY      {str(opt.return_type_id):<35}{extra}")
+            LOG.debug(f"SUPPLY      {opt.return_type_id!s:<35}{extra}")
         elif isinstance(opt, Provide):
-            LOG.debug(f"PROVIDE     {str(opt.return_type_id):<35} <- {opt.name}() {extra}")
+            LOG.debug(f"PROVIDE     {opt.return_type_id!s:<35} <- {opt.name}() {extra}")
         elif isinstance(opt, Entrypoint):
             type_id = opt.parameter_types[0]
-            LOG.debug(f"ENTRYPOINT  {str(type_id):<35}")
+            LOG.debug(f"ENTRYPOINT  {type_id!s:<35}")
         elif isinstance(opt, Invoke):
             LOG.debug(f"INVOKE      {opt.name:<35}")
