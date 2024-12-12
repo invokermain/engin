@@ -21,7 +21,7 @@ class Engin:
     _LIB_OPTIONS: ClassVar[list[Option]] = [Provide(Lifecycle)]
 
     def __init__(self, *options: Option) -> None:
-        self._providers: dict[TypeId, Provide] = {}
+        self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
         self._invokables: list[Invoke] = []
         self._stop_event = Event()
 
@@ -87,3 +87,6 @@ class Engin:
             LOG.debug(f"ENTRYPOINT  {type_id!s:<35}")
         elif isinstance(opt, Invoke):
             LOG.debug(f"INVOKE      {opt.name:<35}")
+
+    def _self(self) -> "Engin":
+        return self

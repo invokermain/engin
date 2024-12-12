@@ -25,3 +25,23 @@ async def test_assembler_with_multiproviders():
     assembled_dependency = await assembler.assemble(Invoke(assert_all))
 
     await assembled_dependency()
+
+
+async def test_assembler_providers_only_called_once():
+    _count = 0
+
+    def count() -> int:
+        nonlocal _count
+        _count += 1
+        return _count
+
+    def assert_singleton(some: int) -> None:
+        assert some == 1
+
+    assembler = Assembler([Provide(count)])
+
+    assembled_dependency = await assembler.assemble(Invoke(assert_singleton))
+    await assembled_dependency()
+
+    assembled_dependency = await assembler.assemble(Invoke(assert_singleton))
+    await assembled_dependency()
