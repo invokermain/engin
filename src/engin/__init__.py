@@ -8,11 +8,11 @@ from engin._lifecycle import Lifecycle
 __all__ = [
     "Assembler",
     "AssemblyError",
+    "Block",
     "Engin",
     "Entrypoint",
     "Invoke",
     "Lifecycle",
-    "Block",
     "Option",
     "Provide",
     "Supply",
