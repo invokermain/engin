@@ -1,6 +1,6 @@
 import traceback
 import typing
-from typing import Protocol, TypeAlias
+from typing import ClassVar, Protocol, TypeAlias
 
 from engin import Engin, Option
 
@@ -18,13 +18,16 @@ class ASGIType(Protocol):
 
 
 class ASGIEngin(Engin, ASGIType):
+    _asgi_type: ClassVar[type[ASGIType]] = ASGIType  # type: ignore[type-abstract]
     _asgi_app: ASGIType
 
     def __init__(self, *options: Option) -> None:
         super().__init__(*options)
 
-        if not self._assembler.has(ASGIType):
-            raise LookupError("A provider for `ASGIType` was expected, none found")
+        if not self._assembler.has(self._asgi_type):
+            raise LookupError(
+                f"A provider for `{self._asgi_type.__name__}` was expected, none found"
+            )
 
     async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
         if scope["type"] == "lifespan":
@@ -44,7 +47,7 @@ class ASGIEngin(Engin, ASGIType):
 
     async def _startup(self) -> None:
         await self.start()
-        self._asgi_app = await self._assembler.get(ASGIType)
+        self._asgi_app = await self._assembler.get(self._asgi_type)
 
 
 class _Rereceive:

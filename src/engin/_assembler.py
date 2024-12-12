@@ -49,7 +49,7 @@ class Assembler:
         if not providers:
             if type_id.multi:
                 LOG.warning(f"no provider for '{type_id}' defaulting to empty list")
-                providers = [(Supply([], type_hint=list[type_id.type]))]
+                providers = [(Supply([], type_hint=list[type_id.type]))]  # type: ignore[name-defined]
             else:
                 raise LookupError(f"No Provider registered for dependency '{type_id}'")
 
@@ -112,15 +112,20 @@ class Assembler:
 
     async def get(self, type_: type[T]) -> T:
         type_id = type_id_of(type_)
+        if type_id in self._dependencies:
+            return self._dependencies[type_id]
         if type_id.multi:
             out = []
             for provider in self._multiproviders[type_id]:
                 assembled_dependency = await self.assemble(provider)
                 out.extend(await assembled_dependency())
-            return out
+            self._dependencies[type_id] = out
+            return out  # type: ignore[return-value]
         else:
             assembled_dependency = await self.assemble(self._providers[type_id])
-            return await assembled_dependency()
+            value = await assembled_dependency()
+            self._dependencies[type_id] = value
+            return value  # type: ignore[return-value]
 
     def has(self, type_: type[T]) -> bool:
         return type_id_of(type_) in self._providers

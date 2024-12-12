@@ -1,0 +1,30 @@
+name: Check
+
+on:
+  push:
+
+jobs:
+  publish-to-pypi:
+    name: python
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Ruff
+        run:  uv run ruff check src tests
+
+      - name: Mypy
+        run: uv run mypy src
+
+      - name: Test
+        run: uv run pytest tests
