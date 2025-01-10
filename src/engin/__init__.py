@@ -1,3 +1,4 @@
+from engin import ext
 from engin._assembler import Assembler
 from engin._block import Block, invoke, provide
 from engin._dependency import Entrypoint, Invoke, Provide, Supply
@@ -16,6 +17,7 @@ __all__ = [
     "Option",
     "Provide",
     "Supply",
+    "ext",
     "invoke",
     "provide",
 ]
