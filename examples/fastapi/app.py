@@ -19,6 +19,7 @@ class AppBlock(Block):
 
     @invoke
     def add_health_endpoint(self, app: FastAPI) -> None:
-        @app.get("/health")
         async def health():
             return {"ok": True}
+
+        app.add_api_route(path="/health", endpoint=health)
