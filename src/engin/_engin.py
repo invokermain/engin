@@ -35,12 +35,8 @@ class Engin:
     async def run(self):
         await self.start()
 
-        # lifecycle startup
-
         # wait till stop signal recieved
         await self._stop_event.wait()
-
-        # lifecycle shutdown
 
     async def start(self) -> None:
         LOG.info("starting engin")
