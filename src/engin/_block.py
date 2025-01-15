@@ -1,5 +1,6 @@
 import inspect
 from collections.abc import Iterable, Iterator
+from typing import ClassVar
 
 from engin._dependency import Func, Invoke, Provide
 
@@ -15,11 +16,10 @@ def invoke(func: Func) -> Func:
 
 
 class Block(Iterable[Provide | Invoke]):
-    _name: str
-    _options: list[Provide | Invoke]
+    options: ClassVar[list[Provide | Invoke]] = []
 
     def __init__(self, /, block_name: str | None = None) -> None:
-        self._options: list[Provide | Invoke] = []
+        self._options: list[Provide | Invoke] = self.options[:]
         self._name = block_name or f"{type(self).__name__}"
         for _, method in inspect.getmembers(self):
             if opt := getattr(method, "_opt", None):

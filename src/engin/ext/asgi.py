@@ -1,16 +1,16 @@
 import traceback
-import typing
-from typing import ClassVar, Protocol, TypeAlias
+from collections.abc import Awaitable, Callable, MutableMapping
+from typing import Any, ClassVar, Protocol, TypeAlias
 
 from engin import Engin, Option
 
 __all__ = ["ASGIEngin", "ASGIType"]
 
 
-_Scope: TypeAlias = typing.MutableMapping[str, typing.Any]
-_Message: TypeAlias = typing.MutableMapping[str, typing.Any]
-_Receive: TypeAlias = typing.Callable[[], typing.Awaitable[_Message]]
-_Send: TypeAlias = typing.Callable[[_Message], typing.Awaitable[None]]
+_Scope: TypeAlias = MutableMapping[str, Any]
+_Message: TypeAlias = MutableMapping[str, Any]
+_Receive: TypeAlias = Callable[[], Awaitable[_Message]]
+_Send: TypeAlias = Callable[[_Message], Awaitable[None]]
 
 
 class ASGIType(Protocol):
@@ -54,5 +54,5 @@ class _Rereceive:
     def __init__(self, message: _Message) -> None:
         self._message = message
 
-    async def __call__(self, *args, **kwargs) -> _Message:
+    async def __call__(self, *args: Any, **kwargs: Any) -> _Message:
         return self._message

@@ -32,11 +32,13 @@ class Engin:
     def assembler(self) -> Assembler:
         return self._assembler
 
-    async def run(self):
+    async def run(self) -> None:
         await self.start()
 
         # wait till stop signal recieved
         await self._stop_event.wait()
+
+        await self.stop()
 
     async def start(self) -> None:
         LOG.info("starting engin")
@@ -53,8 +55,10 @@ class Engin:
 
     async def stop(self) -> None:
         self._stop_event.set()
+        lifecycle = await self._assembler.get(Lifecycle)
+        await lifecycle.shutdown()
 
-    def _destruct_options(self, options: Iterable[Option]):
+    def _destruct_options(self, options: Iterable[Option]) -> None:
         for opt in options:
             if isinstance(opt, Block):
                 self._destruct_options(opt)
