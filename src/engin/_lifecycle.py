@@ -4,12 +4,12 @@ from contextlib import AbstractAsyncContextManager, AsyncExitStack
 
 class Lifecycle:
     def __init__(self) -> None:
-        self._on_startup: list[Callable] = []
-        self._on_shutdown: list[Callable] = []
+        self._on_startup: list[Callable[..., None]] = []
+        self._on_shutdown: list[Callable[..., None]] = []
         self._context_managers: list[AbstractAsyncContextManager] = []
         self._stack: AsyncExitStack = AsyncExitStack()
 
-    def register_context(self, cm: AbstractAsyncContextManager):
+    def register_context(self, cm: AbstractAsyncContextManager) -> None:
         self._context_managers.append(cm)
 
     async def startup(self) -> None:

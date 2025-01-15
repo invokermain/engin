@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 from engin._dependency import Dependency, Provide, Supply
 from engin._exceptions import AssemblyError
@@ -113,7 +113,7 @@ class Assembler:
     async def get(self, type_: type[T]) -> T:
         type_id = type_id_of(type_)
         if type_id in self._dependencies:
-            return self._dependencies[type_id]
+            return cast(T, self._dependencies[type_id])
         if type_id.multi:
             out = []
             for provider in self._multiproviders[type_id]:

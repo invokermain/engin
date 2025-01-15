@@ -25,7 +25,7 @@ Func: TypeAlias = (
 _SELF = object()
 
 
-def _noop(*args, **kwargs) -> None: ...
+def _noop(*args: Any, **kwargs: Any) -> None: ...
 
 
 class Dependency(ABC, Generic[P, T]):

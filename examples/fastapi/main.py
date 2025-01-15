@@ -3,7 +3,7 @@ import logging
 import uvicorn
 
 from engin import Supply
-from engin.extensions.fastapi import FastAPIEngin
+from engin.ext.fastapi import FastAPIEngin
 from examples.fastapi.app import AppBlock, AppConfig
 from examples.fastapi.routes.cats.block import CatBlock
 
