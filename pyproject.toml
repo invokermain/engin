@@ -29,6 +29,7 @@ dev-dependencies = [
 
 [dependency-groups]
 docs = [
+    "mkdocs-material>=9.5.50",
     "mkdocstrings[python]>=0.27.0",
 ]
 
