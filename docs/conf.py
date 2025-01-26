@@ -25,6 +25,15 @@ exclude_patterns = []
 html_theme = "sphinx_material"
 html_static_path = ["_static"]
 
+html_theme_options = {
+    "nav_title": "Engin",
+    "base_url": "https://engin.readthedocs.org",
+    "color_primary": "blue",
+    "color_accent": "light-blue",
+    "repo_url": "https://github.com/invokermain/engin",
+    "repo_name": "Engin",
+}
+
 # Napoleon settings
 # https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html#configuration
 napoleon_google_docstring = True
