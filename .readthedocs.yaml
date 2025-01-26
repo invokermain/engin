@@ -18,7 +18,7 @@ build:
     install:
        - uv sync --group docs
     pre_build:
-      - uv run sphinx-apidoc -f -o docs/source src
+      - uv run sphinx-apidoc -f -o docs src
     build:
        html:
           - uv run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
