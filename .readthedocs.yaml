@@ -22,4 +22,4 @@ build:
           - NO_COLOR=1 uv run mkdocs build -f docs/mkdocs.yaml --strict --site-dir $READTHEDOCS_OUTPUT/html
 
 mkdocs:
-  configuration: docs/mkdocs.yaml
+  configuration: mkdocs.yaml

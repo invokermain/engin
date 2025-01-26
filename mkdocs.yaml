@@ -1,0 +1,57 @@
+site_name: Engin
+site_description: A lightweight application framework for modern Python.
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+
+theme:
+    name: 'material'
+    custom_dir: 'docs/overrides'
+    palette:
+      - scheme: 'default'
+        media: '(prefers-color-scheme: light)'
+        toggle:
+          icon: 'material/lightbulb'
+          name: "Switch to dark mode"
+      - scheme: 'slate'
+        media: '(prefers-color-scheme: dark)'
+        primary: 'blue'
+        toggle:
+          icon: 'material/lightbulb-outline'
+          name: 'Switch to light mode'
+
+repo_name: invokermain/engin
+repo_url: https://github.com/invokermain/engin/
+edit_uri: ""
+
+extra_javascript:
+  - js/readthedocs.js
+
+plugins:
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        paths: [.]
+        options:
+          members_order: source
+          separate_signature: true
+          filters: ["!^_"]
+          docstring_options:
+            ignore_init_summary: true
+          merge_init_into_class: true
+          show_signature_annotations: true
+          signature_crossrefs: true
+        import:
+          - url: https://docs.python.org/3/objects.inv
+            domains: [py, std]
+
+watch:
+  - src
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
