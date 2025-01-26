@@ -23,6 +23,5 @@ build:
        html:
           - uv run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
 
-# Build documentation in the "docs/" directory with Sphinx
-sphinx:
-   configuration: docs/conf.py
+mkdocs:
+  configuration: docs/mkdocs.yaml

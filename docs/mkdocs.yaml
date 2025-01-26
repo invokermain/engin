@@ -1,0 +1,8 @@
+theme:
+  name: material
+  custom_dir: docs/overrides
+
+extra_javascript:
+  - js/readthedocs.js
+
+site_url: !ENV READTHEDOCS_CANONICAL_URL
