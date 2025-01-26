@@ -4,7 +4,7 @@ site_url: !ENV READTHEDOCS_CANONICAL_URL
 
 theme:
     name: 'material'
-    custom_dir: 'docs/overrides'
+    custom_dir: 'overrides'
     palette:
       - scheme: 'default'
         media: '(prefers-color-scheme: light)'
