@@ -18,6 +18,8 @@ theme:
           icon: 'material/lightbulb-outline'
           name: 'Switch to light mode'
 
+docs_dir: .
+
 repo_name: invokermain/engin
 repo_url: https://github.com/invokermain/engin/
 edit_uri: ""
