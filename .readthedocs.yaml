@@ -17,11 +17,9 @@ build:
        - uv venv
     install:
        - uv sync --group docs
-    pre_build:
-      - uv run sphinx-apidoc -f -o docs src
     build:
        html:
-          - uv run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
+          - NO_COLOR=1 uv run mkdocs build --strict --site-dir $READTHEDOCS_OUTPUT/html
 
 mkdocs:
   configuration: docs/mkdocs.yaml
