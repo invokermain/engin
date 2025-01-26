@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pydantic import ValidationError
 from starlette.requests import Request
 from starlette.responses import Response
@@ -8,7 +10,7 @@ from examples.asgi.features.cats.domain import Cat
 
 
 class PostCatEndpoint(Endpoint):
-    ALLOWED_METHODS = ("POST",)
+    ALLOWED_METHODS: ClassVar[list[str]] = ["POST"]
 
     def __init__(self, db: DatabaseInterface) -> None:
         self._db = db

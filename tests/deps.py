@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TypeAlias
 
 from engin import Block, provide
@@ -30,7 +30,7 @@ def make_aliased_int() -> IntTypeAlias:
 class ABlock(Block):
     @provide
     def make_datetime(self) -> datetime:
-        return datetime.now()
+        return datetime.now(tz=UTC)
 
     @provide
     def make_many_float(self) -> list[float]:

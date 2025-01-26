@@ -5,7 +5,7 @@ from examples.asgi.common.db.ports import DatabaseInterface
 
 class InMemoryDatabase(DatabaseInterface):
     def __init__(self) -> None:
-        self._data = {}
+        self._data: dict[str, Any] = {}
 
     def get(self, key: str) -> Any:
         return self._data.get(key)

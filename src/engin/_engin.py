@@ -62,7 +62,7 @@ class Engin:
         for opt in options:
             if isinstance(opt, Block):
                 self._destruct_options(opt)
-            if isinstance(opt, (Provide, Supply)):
+            if isinstance(opt, Provide | Supply):
                 existing = self._providers.get(opt.return_type_id)
                 self._log_option(opt, overwrites=existing)
                 self._providers[opt.return_type_id] = opt

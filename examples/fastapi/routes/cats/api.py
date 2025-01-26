@@ -26,17 +26,17 @@ class CatPostModel(BaseModel):
 
 
 @router.post("/")
-async def get_cat(
+async def post_cat(
     cat: CatPostModel,
     repository: Annotated[CatRepository, Inject(CatRepository)],
 ) -> int:
     cat_id = repository.next_id()
-    cat = Cat(
+    cat_domain = Cat(
         id=cat_id,
         name=cat.name,
         personality=cat.personality,
         age=cat.age,
         breed=cat.breed,
     )
-    repository.set(cat=cat)
+    repository.set(cat=cat_domain)
     return cat_id
