@@ -2,7 +2,7 @@ import traceback
 from collections.abc import Awaitable, Callable, MutableMapping
 from typing import Any, ClassVar, Protocol, TypeAlias
 
-from engin import Engin, Option
+from engin import Engin, Lifecycle, Option
 
 __all__ = ["ASGIEngin", "ASGIType"]
 
@@ -46,7 +46,8 @@ class ASGIEngin(Engin, ASGIType):
         await self._asgi_app(scope, receive, send)
 
     async def _startup(self) -> None:
-        await self.start()
+        lifecycle = await self._assembler.get(Lifecycle)
+        await lifecycle.startup()
         self._asgi_app = await self._assembler.get(self._asgi_type)
 
 
