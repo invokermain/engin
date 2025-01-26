@@ -1,14 +1,12 @@
 import inspect
 import typing
 from abc import ABC
+from collections.abc import Awaitable, Callable
 from inspect import Parameter, Signature, isclass, iscoroutinefunction
 from typing import (
     Any,
-    Awaitable,
-    Callable,
     Generic,
     ParamSpec,
-    Type,
     TypeAlias,
     TypeVar,
     cast,
@@ -19,9 +17,7 @@ from engin._type_utils import TypeId, type_id_of
 
 P = ParamSpec("P")
 T = TypeVar("T")
-Func: TypeAlias = (
-    Callable[P, T] | Callable[P, Awaitable[T]] | Callable[[], T] | Callable[[], Awaitable[T]]
-)
+Func: TypeAlias = Callable[P, T]
 _SELF = object()
 
 
@@ -66,11 +62,11 @@ class Dependency(ABC, Generic[P, T]):
         if self._is_async:
             return await cast(Awaitable[T], self._func(*args, **kwargs))
         else:
-            return cast(T, self._func(*args, **kwargs))
+            return self._func(*args, **kwargs)
 
 
 class Invoke(Dependency):
-    def __init__(self, invocation: Func[P, T], block_name: str | None = None):
+    def __init__(self, invocation: Func[P, T], block_name: str | None = None) -> None:
         super().__init__(func=invocation, block_name=block_name)
 
     def __str__(self) -> str:
@@ -78,7 +74,7 @@ class Invoke(Dependency):
 
 
 class Entrypoint(Invoke):
-    def __init__(self, type_: Type[Any], *, block_name: str | None = None) -> None:
+    def __init__(self, type_: type[Any], *, block_name: str | None = None) -> None:
         self._type = type_
         super().__init__(invocation=_noop, block_name=block_name)
 
@@ -99,7 +95,7 @@ class Entrypoint(Invoke):
 
 
 class Provide(Dependency[Any, T]):
-    def __init__(self, builder: Func[P, T], block_name: str | None = None):
+    def __init__(self, builder: Func[P, T], block_name: str | None = None) -> None:
         super().__init__(func=builder, block_name=block_name)
         self._is_multi = typing.get_origin(self.return_type) is list
 
@@ -111,14 +107,16 @@ class Provide(Dependency[Any, T]):
                 )
 
     @property
-    def return_type(self) -> Type[T]:
+    def return_type(self) -> type[T]:
         if isclass(self._func):
             return_type = self._func  # __init__ returns self
         else:
             try:
                 return_type = get_type_hints(self._func)["return"]
-            except KeyError:
-                raise RuntimeError(f"Dependency '{self.name}' requires a return typehint")
+            except KeyError as err:
+                raise RuntimeError(
+                    f"Dependency '{self.name}' requires a return typehint"
+                ) from err
 
         return return_type
 
@@ -140,7 +138,7 @@ class Provide(Dependency[Any, T]):
 class Supply(Provide, Generic[T]):
     def __init__(
         self, value: T, *, type_hint: type | None = None, block_name: str | None = None
-    ):
+    ) -> None:
         self._value = value
         self._type_hint = type_hint
         if self._type_hint is not None:
@@ -148,7 +146,7 @@ class Supply(Provide, Generic[T]):
         super().__init__(builder=self._get_val, block_name=block_name)
 
     @property
-    def return_type(self) -> Type[T]:
+    def return_type(self) -> type[T]:
         if self._type_hint is not None:
             return self._type_hint
         if isinstance(self._value, list):

@@ -15,6 +15,7 @@ dev-dependencies = [
     "fastapi>=0.115.6",
     "httpx>=0.27.2",
     "mypy>=1",
+    "poethepoet>=0.32.1",
     "pydantic-settings>=2.6.0",
     "pydantic>=2.9.2",
     "pytest-asyncio>=0.24.0",
@@ -24,13 +25,27 @@ dev-dependencies = [
     "uvicorn>=0.31.1",
 ]
 
+
 [tool.ruff]
 line-length = 95
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "RUF"]
-ignore = []
+select = [
+    "ANN", "ASYNC", "B", "C4", "DTZ", "E", "F", "I", "INP", "LOG", "PERF", "PIE", "PT",
+    "PTH", "Q", "UP", "R", "RUF", "S", "SIM", "TCH", "T20", "W"
+]
+ignore = [
+    "ANN401",
+    "RET505", # Unnecessary `else` after `return` statement
+    "RET506", # Unnecessary `else` after `raise` statement
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/src/*" = ["PT"]
+"**/tests/*" = ["S", "ANN"]
+"**/examples/*" = ["T201"]
+
 
 [tool.pytest.ini_options]
 log_cli = true
@@ -38,8 +53,29 @@ log_cli_level = "DEBUG"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
+
 [tool.mypy]
 strict = true
 disable_error_code = [
     "type-arg", # allow generic types without type arguments
 ]
+
+
+[tool.poe.tasks]
+format.default_item_type = "cmd"
+format.sequence = [
+    "ruff format src tests examples",
+    "ruff check --select I --fix src tests examples"
+]
+
+check.default_item_type = "cmd"
+check.sequence = [
+    "ruff format --check src tests examples",
+    "ruff check src tests examples",
+    "mypy src examples",
+]
+
+fix.default_item_type = "cmd"
+fix.sequence = ["ruff check src tests --fix"]
+
+test = "pytest -s tests"

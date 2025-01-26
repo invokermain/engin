@@ -1,4 +1,4 @@
-import json
+from typing import ClassVar
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -9,7 +9,7 @@ from examples.asgi.features.cats.domain import Cat
 
 
 class GetCatEndpoint(Endpoint):
-    ALLOWED_METHODS = ("GET",)
+    ALLOWED_METHODS: ClassVar[list[str]] = ["GET"]
 
     def __init__(self, db: DatabaseInterface) -> None:
         self._db = db

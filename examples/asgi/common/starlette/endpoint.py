@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 from typing import ClassVar
 
 from starlette.exceptions import HTTPException
@@ -14,7 +13,7 @@ class Endpoint(ABC):
     HTTPEndpoint does not allow you to control class initialisation.
     """
 
-    ALLOWED_METHODS: ClassVar[Iterable[str]] = (
+    ALLOWED_METHODS: ClassVar[list[str]] = [
         "GET",
         "HEAD",
         "POST",
@@ -22,7 +21,7 @@ class Endpoint(ABC):
         "PATCH",
         "DELETE",
         "OPTIONS",
-    )
+    ]
 
     @abstractmethod
     async def exec(self, request: Request) -> Response: ...

@@ -6,12 +6,12 @@ from engin._dependency import Func, Invoke, Provide
 
 
 def provide(func: Func) -> Func:
-    func._opt = Provide(func)  # type: ignore[union-attr]
+    func._opt = Provide(func)  # type: ignore[attr-defined]
     return func
 
 
 def invoke(func: Func) -> Func:
-    func._opt = Invoke(func)  # type: ignore[union-attr]
+    func._opt = Invoke(func)  # type: ignore[attr-defined]
     return func
 
 
@@ -23,7 +23,7 @@ class Block(Iterable[Provide | Invoke]):
         self._name = block_name or f"{type(self).__name__}"
         for _, method in inspect.getmembers(self):
             if opt := getattr(method, "_opt", None):
-                if not isinstance(opt, (Provide, Invoke)):
+                if not isinstance(opt, Provide | Invoke):
                     raise RuntimeError("Block option is not an instance of Provide or Invoke")
                 opt.set_block_name(self._name)
                 self._options.append(opt)
