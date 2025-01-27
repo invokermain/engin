@@ -2,17 +2,22 @@
 
 Engin is a zero-dependency application framework for modern Python.
 
+**Documentation**: https://engin.readthedocs.io/
+
 ## Features ✨
 
-- **Lightweight**: Engin has no dependencies.
-- **Async First**: Engin provides first-class support for applications. 
-- **Dependency Injection**: Engin promotes a modular decoupled architecture in your application.
-- **Lifecycle Management**: Engin provides an simple, portable approach for implememting
-  startup and shutdown tasks.
-- **Ecosystem Compatability**: seamlessly integrate with frameworks such as FastAPI without
-  having to migrate your dependencies.
-- **Code Reuse**: Engin's modular components work great as packages and distributions. Allowing
-  low boiler-plate code reuse within your Organisation.
+- **Dependency Injection** - Engin includes a fully-featured Dependency Injection system,
+  powered by type hints.
+- **Lifecycle Management** - Engin provides a simple & portable approach for attaching
+  startup and shutdown tasks to the application's lifecycle.
+- **Code Reuse** - Engin's modular components, called Blocks, work great as distributed
+  packages allowing zero boiler-plate code reuse across multiple applications. Perfect for
+  maintaining many services across your organisation.
+- **Ecosystem Compatability** - Engin ships with integrations for popular frameworks that
+  provide their own Dependency Injection, for example FastAPI, allowing you to integrate
+  Engin into existing code bases incrementally.
+- **Async Native**: Engin is an async framework, meaning first class support for async
+  dependencies. However Engin will happily run synchronous code as well.
 
 ## Installation
 
