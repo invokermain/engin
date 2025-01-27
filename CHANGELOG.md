@@ -10,7 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- 
+- Invocations, startups tasks and shutdown tasks are now all run sequentially.
+- Improved error handling, if an Invocation errors, or a Lifecycle startup tasks errors
+  then the Engin will exit. Whilst errors in shutdown tasks are logged and ignored. 
+- Improved error messaging when Invocations or Lifecycle tasks error.
+- Removed non-public methods from the Lifecycle class, and renamed `register_context` to
+  `append`.
+
 
 ## [0.0.3] - 2025-01-15
 
@@ -25,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Engin now performs Lifecycle shutdown.
+
 
 ## [0.0.2] - 2025-01-10
 
