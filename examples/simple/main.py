@@ -1,8 +1,11 @@
 import asyncio
+import logging
 
 from httpx import AsyncClient
 
 from engin import Engin, Invoke, Provide
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def new_httpx_client() -> AsyncClient:

@@ -1,6 +1,6 @@
 [project]
 name = "engin"
-version = "0.0.3"
+version = "0.0.4"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -45,6 +45,7 @@ select = [
 ]
 ignore = [
     "ANN401",
+    "PERF203", # `try`-`except` within a loop incurs performance overhead
     "RET505", # Unnecessary `else` after `return` statement
     "RET506", # Unnecessary `else` after `raise` statement
 ]

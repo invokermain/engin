@@ -1,24 +1,38 @@
-from contextlib import AbstractAsyncContextManager, AsyncExitStack
-from typing import TYPE_CHECKING
+import logging
+from contextlib import AbstractAsyncContextManager
+from types import TracebackType
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+LOG = logging.getLogger("engin")
 
 
 class Lifecycle:
     def __init__(self) -> None:
-        self._on_startup: list[Callable[..., None]] = []
-        self._on_shutdown: list[Callable[..., None]] = []
         self._context_managers: list[AbstractAsyncContextManager] = []
-        self._stack: AsyncExitStack = AsyncExitStack()
 
-    def register_context(self, cm: AbstractAsyncContextManager) -> None:
-        self._context_managers.append(cm)
+    def append(self, cm: AbstractAsyncContextManager) -> None:
+        suppressed_cm = _AExitSuppressingAsyncContextManager(cm)
+        self._context_managers.append(suppressed_cm)
 
-    async def startup(self) -> None:
-        self._stack = AsyncExitStack()
-        for cm in self._context_managers:
-            await self._stack.enter_async_context(cm)
+    def list(self) -> list[AbstractAsyncContextManager]:
+        return self._context_managers[:]
 
-    async def shutdown(self) -> None:
-        await self._stack.aclose()
+
+class _AExitSuppressingAsyncContextManager(AbstractAsyncContextManager):
+    def __init__(self, cm: AbstractAsyncContextManager) -> None:
+        self._cm = cm
+
+    async def __aenter__(self) -> AbstractAsyncContextManager:
+        await self._cm.__aenter__()
+        return self._cm
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
+        try:
+            await self._cm.__aexit__(exc_type, exc_value, traceback)
+        except Exception as err:
+            LOG.error("error in lifecycle hook stop, ignoring...", exc_info=err)
