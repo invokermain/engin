@@ -1,9 +1,6 @@
-import functools
 import logging
-from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from types import TracebackType
-from typing import TypeAlias
 
 LOG = logging.getLogger("engin")
 
@@ -13,24 +10,29 @@ class Lifecycle:
         self._context_managers: list[AbstractAsyncContextManager] = []
 
     def append(self, cm: AbstractAsyncContextManager) -> None:
-        cm.__aexit__ = _suppress_exit_errors(cm.__aexit__)
-        self._context_managers.append(cm)
+        suppressed_cm = _AExitSuppressingAsyncContextManager(cm)
+        self._context_managers.append(suppressed_cm)
 
     def list(self) -> list[AbstractAsyncContextManager]:
         return self._context_managers[:]
 
 
-_AExitSig: TypeAlias = Callable[
-    [type[BaseException] | None, BaseException | None, TracebackType | None], Awaitable[None]
-]
+class _AExitSuppressingAsyncContextManager(AbstractAsyncContextManager):
+    def __init__(self, cm: AbstractAsyncContextManager) -> None:
+        self._cm = cm
 
+    async def __aenter__(self) -> AbstractAsyncContextManager:
+        await self._cm.__aenter__()
+        return self._cm
 
-def _suppress_exit_errors(func: _AExitSig) -> _AExitSig:
-    # @functools.wraps(func)
-    async def wrapped(exc_type, exc_value, traceback) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
         try:
-            return await func(exc_type, exc_value, traceback)
+            await self._cm.__aexit__(exc_type, exc_value, traceback)
         except Exception as err:
-            LOG.error(f"error in lifecycle hook stop, ignoring...", exc_info=err)
-
-    return wrapped
+            LOG.error("error in lifecycle hook stop, ignoring...", exc_info=err)

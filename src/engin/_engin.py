@@ -2,10 +2,11 @@ import asyncio
 import logging
 import os
 import signal
-from asyncio import Event
+from asyncio import Event, Task
 from collections.abc import Iterable
 from contextlib import AsyncExitStack
 from itertools import chain
+from types import FrameType
 from typing import ClassVar, TypeAlias
 
 from engin import Entrypoint
@@ -59,6 +60,8 @@ class Engin:
         self._stop_requested_event = Event()
         self._stop_complete_event = Event()
         self._exit_stack: AsyncExitStack = AsyncExitStack()
+        self._shutdown_task: Task | None = None
+        self._run_task: Task | None = None
 
         self._destruct_options(chain(self._LIB_OPTIONS, options))
         self._assembler = Assembler(self._providers.values())
@@ -73,7 +76,7 @@ class Engin:
         the `stop` method.
         """
         await self.start()
-        asyncio.create_task(_raise_on_stop(self._stop_requested_event))
+        self._run_task = asyncio.create_task(_raise_on_stop(self._stop_requested_event))
         await self._stop_requested_event.wait()
         await self._shutdown()
 
@@ -94,20 +97,19 @@ class Engin:
                 LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
                 return
 
-        # do lifecycle startup
-        LOG.info("startup complete")
-
         lifecycle = await self._assembler.get(Lifecycle)
 
-        for hook in lifecycle.list():
-            try:
+        try:
+            for hook in lifecycle.list():
                 await self._exit_stack.enter_async_context(hook)
-            except Exception as err:
-                LOG.error(f"lifecycle startup error, exiting", exc_info=err)
-                await self._exit_stack.aclose()
-                return
+        except Exception as err:
+            LOG.error("lifecycle startup error, exiting", exc_info=err)
+            await self._exit_stack.aclose()
+            return
 
-        asyncio.create_task(self._shutdown_when_stopped())
+        LOG.info("startup complete")
+
+        self._shutdown_task = asyncio.create_task(self._shutdown_when_stopped())
 
     async def stop(self) -> None:
         """
@@ -164,7 +166,7 @@ class _StopRequested(RuntimeError):
     pass
 
 
-async def _raise_on_stop(stop_requested_event: Event):
+async def _raise_on_stop(stop_requested_event: Event) -> None:
     """
     This method is based off of the Temporal Python SDK's Worker class:
     https://github.com/temporalio/sdk-python/blob/main/temporalio/worker/_worker.py#L488
@@ -179,14 +181,15 @@ async def _raise_on_stop(stop_requested_event: Event):
             await stop_requested_event.wait()
             raise _StopRequested()
         else:
+            should_stop = False
+
             # windows does not support signal_handlers, so this is the workaround
-            def ctrlc_handler(sig, frame):
+            def ctrlc_handler(sig: int, frame: FrameType | None) -> None:
                 nonlocal should_stop
                 if should_stop:
                     raise KeyboardInterrupt("Forced keyboard interrupt")
                 should_stop = True
 
-            should_stop = False
             signal.signal(signal.SIGINT, ctrlc_handler)
 
             while not should_stop:

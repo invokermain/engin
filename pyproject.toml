@@ -45,6 +45,7 @@ select = [
 ]
 ignore = [
     "ANN401",
+    "PERF203", # `try`-`except` within a loop incurs performance overhead
     "RET505", # Unnecessary `else` after `return` statement
     "RET506", # Unnecessary `else` after `raise` statement
 ]

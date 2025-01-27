@@ -36,7 +36,7 @@ async def test_engin():
 
     engin = Engin(Provide(a), Provide(b), Provide(c), Invoke(main))
 
-    asyncio.create_task(engin.run())
+    await engin.start()
     await engin.stop()
 
 
@@ -48,7 +48,7 @@ async def test_engin_with_block():
 
     engin = Engin(ABlock(), Invoke(main))
 
-    asyncio.create_task(engin.run())
+    await engin.start()
     await engin.stop()
 
 
@@ -75,7 +75,7 @@ async def test_engin_with_entrypoint():
 
     engin = Engin(Provide(a), Entrypoint(A))
 
-    asyncio.create_task(engin.run())
+    await engin.start()
     await engin.stop()
 
     assert provider_called
@@ -96,7 +96,7 @@ async def test_engin_with_lifecycle():
 
     engin = Engin(Invoke(foo))
 
-    asyncio.create_task(engin.run())
+    await engin.start()
     assert state == 1
 
     await engin.stop()
