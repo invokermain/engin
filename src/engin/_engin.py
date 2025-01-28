@@ -54,6 +54,15 @@ class Engin:
     _LIB_OPTIONS: ClassVar[list[Option]] = [Provide(Lifecycle)]
 
     def __init__(self, *options: Option) -> None:
+        """
+        Initialise the class with the provided options.
+
+        Examples:
+            >>> engin = Engin(Provide(construct_a), Invoke(do_b), Supply(C()), MyBlock())
+
+        Args:
+            *options: an instance of Invoke, Provide, Supply or a Block
+        """
         self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
         self._invokables: list[Invoke] = []
 
@@ -72,8 +81,10 @@ class Engin:
 
     async def run(self) -> None:
         """
-        Run the Engin and wait for it to be stopped via an external signal or by calling
-        the `stop` method.
+        Run the engin.
+
+        The engin will run until it is stopped via an external signal (i.e. SIGTERM or
+        SIGINT) or the `stop` method is called on the engin.
         """
         await self.start()
         self._run_task = asyncio.create_task(_raise_on_stop(self._stop_requested_event))
@@ -82,7 +93,11 @@ class Engin:
 
     async def start(self) -> None:
         """
-        Starts the engin, this method waits for the shutdown lifecycle to complete.
+        Start the engin.
+
+        This is an alternative to calling `run`. This method waits for the startup
+        lifecycle to complete and then returns. The caller is then responsible for
+        calling `stop`.
         """
         LOG.info("starting engin")
         assembled_invocations: list[AssembledDependency] = [
@@ -113,7 +128,11 @@ class Engin:
 
     async def stop(self) -> None:
         """
-        Stops the engin, this method waits for the shutdown lifecycle to complete.
+        Stop the engin.
+
+        This method will wait for the shutdown lifecycle to complete before returning.
+        Note this method can be safely called at any point, even before the engin is
+        started.
         """
         self._stop_requested_event.set()
         await self._stop_complete_event.wait()

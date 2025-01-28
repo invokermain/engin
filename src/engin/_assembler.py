@@ -17,14 +17,40 @@ T = TypeVar("T")
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class AssembledDependency(Generic[T]):
+    """
+    An AssembledDependency can be called to construct the result.
+    """
+
     dependency: Dependency[Any, T]
     bound_args: BoundArguments
 
     async def __call__(self) -> T:
+        """
+        Construct the dependency.
+
+        Returns:
+            The constructed value.
+        """
         return await self.dependency(*self.bound_args.args, **self.bound_args.kwargs)
 
 
 class Assembler:
+    """
+    A container for Providers that is responsible for building provided types.
+
+    The Assembler acts as a cache for previously built types, meaning repeat calls
+    to `get` will produce the same value.
+
+    Examples:
+        ```python
+        def build_str() -> str:
+            return "foo"
+
+        a = Assembler([Provide(build_str)])
+        await a.get(str)
+        ```
+    """
+
     def __init__(self, providers: Iterable[Provide]) -> None:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
@@ -104,6 +130,18 @@ class Assembler:
         return signature.bind(*args, **kwargs)
 
     async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
+        """
+        Assemble a dependency.
+
+        Given a Dependency type, such as Invoke, the Assembler constructs the types
+        required by the Dependency's signature from its providers.
+
+        Args:
+            dependency: the Dependency to assemble.
+
+        Returns:
+            An AssembledDependency, which can be awaited to construct the final value.
+        """
         async with self._lock:
             return AssembledDependency(
                 dependency=dependency,
@@ -111,6 +149,20 @@ class Assembler:
             )
 
     async def get(self, type_: type[T]) -> T:
+        """
+        Return the constructed value for the given type.
+
+        This method assembles the required Providers and constructs their corresponding
+        values.
+
+        If the
+
+        Args:
+            type_: the type of the desired value.
+
+        Returns:
+            The constructed value.
+        """
         type_id = type_id_of(type_)
         if type_id in self._dependencies:
             return cast(T, self._dependencies[type_id])

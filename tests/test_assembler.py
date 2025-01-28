@@ -45,3 +45,9 @@ async def test_assembler_providers_only_called_once():
 
     assembled_dependency = await assembler.assemble(Invoke(assert_singleton))
     await assembled_dependency()
+
+
+async def test_assembler_with_unknown_type():
+    assembler = Assembler([])
+
+    await assembler.get(str)
