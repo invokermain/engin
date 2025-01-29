@@ -105,7 +105,7 @@ class Engin:
         SIGINT) or the `stop` method is called on the engin.
         """
         await self.start()
-        self._run_task = asyncio.create_task(_raise_on_stop(self._stop_requested_event))
+        self._run_task = asyncio.create_task(_wait_for_stop_signal(self._stop_requested_event))
         await self._stop_requested_event.wait()
         await self._shutdown()
 
@@ -199,15 +199,7 @@ class Engin:
         return self
 
 
-class _StopRequested(RuntimeError):
-    pass
-
-
-async def _raise_on_stop(stop_requested_event: Event) -> None:
-    """
-    This method is based off of the Temporal Python SDK's Worker class:
-    https://github.com/temporalio/sdk-python/blob/main/temporalio/worker/_worker.py#L488
-    """
+async def _wait_for_stop_signal(stop_requested_event: Event) -> None:
     try:
         # try to gracefully handle sigint/sigterm
         if not _OS_IS_WINDOWS:
@@ -216,7 +208,6 @@ async def _raise_on_stop(stop_requested_event: Event) -> None:
                 loop.add_signal_handler(signame, stop_requested_event.set)
 
             await stop_requested_event.wait()
-            raise _StopRequested()
         else:
             should_stop = False
 
