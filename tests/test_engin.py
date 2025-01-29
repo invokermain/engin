@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pytest
 
-from engin import AssemblyError, Engin, Entrypoint, Invoke, Lifecycle, Provide
+from engin import Engin, Entrypoint, Invoke, Lifecycle, Provide, ProviderError
 from tests.deps import ABlock
 
 
@@ -61,7 +61,7 @@ async def test_engin_error_handling():
 
     engin = Engin(Provide(raise_value_error), Invoke(main))
 
-    with pytest.raises(AssemblyError, match="foo"):
+    with pytest.raises(ProviderError, match="foo"):
         await engin.run()
 
 

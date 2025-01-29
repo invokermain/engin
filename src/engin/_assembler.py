@@ -111,6 +111,8 @@ class Assembler:
             return cast(T, self._dependencies[type_id])
         if type_id.multi:
             out = []
+            if type_id not in self._multiproviders:
+                raise LookupError(f"no provider found for target type id '{type_id}'")
             for provider in self._multiproviders[type_id]:
                 assembled_dependency = await self.assemble(provider)
                 try:
@@ -124,6 +126,8 @@ class Assembler:
             self._dependencies[type_id] = out
             return out  # type: ignore[return-value]
         else:
+            if type_id not in self._providers:
+                raise LookupError(f"no provider found for target type id '{type_id}'")
             assembled_dependency = await self.assemble(self._providers[type_id])
             try:
                 value = await assembled_dependency()
@@ -181,9 +185,6 @@ class Assembler:
                     self._dependencies[type_id] = value
             else:
                 self._dependencies[type_id] = value
-        raise LookupError(
-            f"no provider found for target type id '{target.type.__name__}'",
-        )
 
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
