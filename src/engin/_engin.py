@@ -26,8 +26,26 @@ _OS_IS_WINDOWS = os.name == "nt"
 
 class Engin:
     """
-    The Engin class runs your application. It assembles the required dependencies, invokes
-    any invocations and manages your application's lifecycle.
+    The Engin is a modular application defined by a collection of options.
+
+    Users should instantiate the Engin with a number of options, where options can be an
+    instance of Provide, Invoke, or a collection of these combined in a Block.
+
+    To create a useful application, users should pass in one or more providers (Provide or
+    Supply) and at least one invocation (Invoke or Entrypoint).
+
+    When instantiated the Engin can be run. This is typically done via the `run` method,
+    but certain use cases, e.g. testing, it can be easier to use the `start` and `stop`
+    methods.
+
+    When ran the Engin takes care of the complete application lifecycle:
+    1. The Engin assembles all Invocations. Only Providers that are required to satisfy
+       the Invoke options parameters are assembled.
+    2. All Invocations are run sequentially in the order they were passed in to the Engin.
+    3. Any Lifecycle Startup defined by a provider that was assembled in order to satisfy
+       the constructors is ran.
+    4. The Engin waits for a stop signal, i.e. SIGINT or SIGTERM.
+    5. Any Lifecyce Shutdown task is ran, in the reverse order to the Startup order.
 
     Examples:
         ```python
@@ -61,7 +79,7 @@ class Engin:
             >>> engin = Engin(Provide(construct_a), Invoke(do_b), Supply(C()), MyBlock())
 
         Args:
-            *options: an instance of Invoke, Provide, Supply or a Block
+            *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
         """
         self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
         self._invokables: list[Invoke] = []

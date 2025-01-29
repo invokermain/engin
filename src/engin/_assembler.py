@@ -7,7 +7,7 @@ from inspect import BoundArguments, Signature
 from typing import Any, Generic, TypeVar, cast
 
 from engin._dependency import Dependency, Provide, Supply
-from engin._exceptions import AssemblyError
+from engin._exceptions import ProviderError
 from engin._type_utils import TypeId, type_id_of
 
 LOG = logging.getLogger("engin")
@@ -67,6 +67,78 @@ class Assembler:
             else:
                 self._multiproviders[type_id].append(provider)
 
+    async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
+        """
+        Assemble a dependency.
+
+        Given a Dependency type, such as Invoke, the Assembler constructs the types
+        required by the Dependency's signature from its providers.
+
+        Args:
+            dependency: the Dependency to assemble.
+
+        Returns:
+            An AssembledDependency, which can be awaited to construct the final value.
+        """
+        async with self._lock:
+            return AssembledDependency(
+                dependency=dependency,
+                bound_args=await self._bind_arguments(dependency.signature),
+            )
+
+    async def get(self, type_: type[T]) -> T:
+        """
+        Return the constructed value for the given type.
+
+        This method assembles the required Providers and constructs their corresponding
+        values.
+
+        If the
+
+        Args:
+            type_: the type of the desired value.
+
+        Raises:
+            LookupError: When no provider is found for the given type.
+            ProviderError: When a provider errors when trying to construct the type or
+                any of its dependent types.
+
+        Returns:
+            The constructed value.
+        """
+        type_id = type_id_of(type_)
+        if type_id in self._dependencies:
+            return cast(T, self._dependencies[type_id])
+        if type_id.multi:
+            out = []
+            for provider in self._multiproviders[type_id]:
+                assembled_dependency = await self.assemble(provider)
+                try:
+                    out.extend(await assembled_dependency())
+                except Exception as err:
+                    raise ProviderError(
+                        provider=provider,
+                        error_type=type(err),
+                        error_message=str(err),
+                    ) from err
+            self._dependencies[type_id] = out
+            return out  # type: ignore[return-value]
+        else:
+            assembled_dependency = await self.assemble(self._providers[type_id])
+            try:
+                value = await assembled_dependency()
+            except Exception as err:
+                raise ProviderError(
+                    provider=self._providers[type_id],
+                    error_type=type(err),
+                    error_message=str(err),
+                ) from err
+            self._dependencies[type_id] = value
+            return value  # type: ignore[return-value]
+
+    def has(self, type_: type[T]) -> bool:
+        return type_id_of(type_) in self._providers
+
     def _resolve_providers(self, type_id: TypeId) -> Collection[Provide]:
         if type_id.multi:
             providers = self._multiproviders.get(type_id)
@@ -99,7 +171,7 @@ class Assembler:
             try:
                 value = await provider(*bound_args.args, **bound_args.kwargs)
             except Exception as err:
-                raise AssemblyError(
+                raise ProviderError(
                     provider=provider, error_type=type(err), error_message=str(err)
                 ) from err
             if provider.is_multiprovider:
@@ -109,6 +181,9 @@ class Assembler:
                     self._dependencies[type_id] = value
             else:
                 self._dependencies[type_id] = value
+        raise LookupError(
+            f"no provider found for target type id '{target.type.__name__}'",
+        )
 
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
@@ -128,56 +203,3 @@ class Assembler:
                 kwargs[param.name] = val
 
         return signature.bind(*args, **kwargs)
-
-    async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
-        """
-        Assemble a dependency.
-
-        Given a Dependency type, such as Invoke, the Assembler constructs the types
-        required by the Dependency's signature from its providers.
-
-        Args:
-            dependency: the Dependency to assemble.
-
-        Returns:
-            An AssembledDependency, which can be awaited to construct the final value.
-        """
-        async with self._lock:
-            return AssembledDependency(
-                dependency=dependency,
-                bound_args=await self._bind_arguments(dependency.signature),
-            )
-
-    async def get(self, type_: type[T]) -> T:
-        """
-        Return the constructed value for the given type.
-
-        This method assembles the required Providers and constructs their corresponding
-        values.
-
-        If the
-
-        Args:
-            type_: the type of the desired value.
-
-        Returns:
-            The constructed value.
-        """
-        type_id = type_id_of(type_)
-        if type_id in self._dependencies:
-            return cast(T, self._dependencies[type_id])
-        if type_id.multi:
-            out = []
-            for provider in self._multiproviders[type_id]:
-                assembled_dependency = await self.assemble(provider)
-                out.extend(await assembled_dependency())
-            self._dependencies[type_id] = out
-            return out  # type: ignore[return-value]
-        else:
-            assembled_dependency = await self.assemble(self._providers[type_id])
-            value = await assembled_dependency()
-            self._dependencies[type_id] = value
-            return value  # type: ignore[return-value]
-
-    def has(self, type_: type[T]) -> bool:
-        return type_id_of(type_) in self._providers
