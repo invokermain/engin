@@ -5,13 +5,26 @@ from typing import Any
 _implict_modules = ["builtins", "typing", "collections.abc"]
 
 
-@dataclass(frozen=True, eq=True)
+@dataclass(frozen=True, eq=True, slots=True)
 class TypeId:
+    """
+    Represents information about a Type in the Dependency Injection framework.
+    """
+
     type: type
     multi: bool
 
     @classmethod
     def from_type(cls, type_: Any) -> "TypeId":
+        """
+        Construct a TypeId from a given type.
+
+        Args:
+            type_: any type.
+
+        Returns:
+            The corresponding TypeId for that type.
+        """
         if is_multi_type(type_):
             inner_obj = typing.get_args(type_)[0]
             return TypeId(type=inner_obj, multi=True)
