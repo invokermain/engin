@@ -1,4 +1,7 @@
+import pytest
+
 from engin import Assembler, Invoke, Provide
+from engin._exceptions import ProviderError
 from tests.deps import make_int, make_many_int, make_many_int_alt, make_str
 
 
@@ -45,3 +48,20 @@ async def test_assembler_providers_only_called_once():
 
     assembled_dependency = await assembler.assemble(Invoke(assert_singleton))
     await assembled_dependency()
+
+
+async def test_assembler_with_unknown_type_raises_lookup_error():
+    assembler = Assembler([])
+
+    with pytest.raises(LookupError):
+        await assembler.get(str)
+
+
+async def test_assembler_with_unknown_type_raises_assembly_error():
+    def make_str() -> str:
+        raise RuntimeError("foo")
+
+    assembler = Assembler([Provide(make_str)])
+
+    with pytest.raises(ProviderError):
+        await assembler.get(str)

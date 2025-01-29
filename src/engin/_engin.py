@@ -26,8 +26,26 @@ _OS_IS_WINDOWS = os.name == "nt"
 
 class Engin:
     """
-    The Engin class runs your application. It assembles the required dependencies, invokes
-    any invocations and manages your application's lifecycle.
+    The Engin is a modular application defined by a collection of options.
+
+    Users should instantiate the Engin with a number of options, where options can be an
+    instance of Provide, Invoke, or a collection of these combined in a Block.
+
+    To create a useful application, users should pass in one or more providers (Provide or
+    Supply) and at least one invocation (Invoke or Entrypoint).
+
+    When instantiated the Engin can be run. This is typically done via the `run` method,
+    but certain use cases, e.g. testing, it can be easier to use the `start` and `stop`
+    methods.
+
+    When ran the Engin takes care of the complete application lifecycle:
+    1. The Engin assembles all Invocations. Only Providers that are required to satisfy
+       the Invoke options parameters are assembled.
+    2. All Invocations are run sequentially in the order they were passed in to the Engin.
+    3. Any Lifecycle Startup defined by a provider that was assembled in order to satisfy
+       the constructors is ran.
+    4. The Engin waits for a stop signal, i.e. SIGINT or SIGTERM.
+    5. Any Lifecyce Shutdown task is ran, in the reverse order to the Startup order.
 
     Examples:
         ```python
@@ -54,6 +72,15 @@ class Engin:
     _LIB_OPTIONS: ClassVar[list[Option]] = [Provide(Lifecycle)]
 
     def __init__(self, *options: Option) -> None:
+        """
+        Initialise the class with the provided options.
+
+        Examples:
+            >>> engin = Engin(Provide(construct_a), Invoke(do_b), Supply(C()), MyBlock())
+
+        Args:
+            *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
+        """
         self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
         self._invokables: list[Invoke] = []
 
@@ -72,17 +99,23 @@ class Engin:
 
     async def run(self) -> None:
         """
-        Run the Engin and wait for it to be stopped via an external signal or by calling
-        the `stop` method.
+        Run the engin.
+
+        The engin will run until it is stopped via an external signal (i.e. SIGTERM or
+        SIGINT) or the `stop` method is called on the engin.
         """
         await self.start()
-        self._run_task = asyncio.create_task(_raise_on_stop(self._stop_requested_event))
+        self._run_task = asyncio.create_task(_wait_for_stop_signal(self._stop_requested_event))
         await self._stop_requested_event.wait()
         await self._shutdown()
 
     async def start(self) -> None:
         """
-        Starts the engin, this method waits for the shutdown lifecycle to complete.
+        Start the engin.
+
+        This is an alternative to calling `run`. This method waits for the startup
+        lifecycle to complete and then returns. The caller is then responsible for
+        calling `stop`.
         """
         LOG.info("starting engin")
         assembled_invocations: list[AssembledDependency] = [
@@ -113,7 +146,11 @@ class Engin:
 
     async def stop(self) -> None:
         """
-        Stops the engin, this method waits for the shutdown lifecycle to complete.
+        Stop the engin.
+
+        This method will wait for the shutdown lifecycle to complete before returning.
+        Note this method can be safely called at any point, even before the engin is
+        started.
         """
         self._stop_requested_event.set()
         await self._stop_complete_event.wait()
@@ -162,15 +199,7 @@ class Engin:
         return self
 
 
-class _StopRequested(RuntimeError):
-    pass
-
-
-async def _raise_on_stop(stop_requested_event: Event) -> None:
-    """
-    This method is based off of the Temporal Python SDK's Worker class:
-    https://github.com/temporalio/sdk-python/blob/main/temporalio/worker/_worker.py#L488
-    """
+async def _wait_for_stop_signal(stop_requested_event: Event) -> None:
     try:
         # try to gracefully handle sigint/sigterm
         if not _OS_IS_WINDOWS:
@@ -179,7 +208,6 @@ async def _raise_on_stop(stop_requested_event: Event) -> None:
                 loop.add_signal_handler(signame, stop_requested_event.set)
 
             await stop_requested_event.wait()
-            raise _StopRequested()
         else:
             should_stop = False
 

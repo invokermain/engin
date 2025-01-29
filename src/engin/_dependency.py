@@ -66,6 +66,24 @@ class Dependency(ABC, Generic[P, T]):
 
 
 class Invoke(Dependency):
+    """
+    Marks a function as an Invocation.
+
+    Invocations are functions that are called prior to lifecycle startup. Invocations
+    should not be long running as the application startup will be blocked until all
+    Invocation are completed.
+
+    Invocations can be provided as an Option to the Engin or a Block.
+
+    Examples:
+        ```python3
+        def print_string(a_string: str) -> None:
+            print(f"invoking with value: '{a_string}'")
+
+        invocation = Invoke(print_string)
+        ```
+    """
+
     def __init__(self, invocation: Func[P, T], block_name: str | None = None) -> None:
         super().__init__(func=invocation, block_name=block_name)
 
@@ -74,6 +92,12 @@ class Invoke(Dependency):
 
 
 class Entrypoint(Invoke):
+    """
+    Marks a type as an Entrypoint.
+
+    Entrypoints are a short hand for no-op Invocations that can be used to
+    """
+
     def __init__(self, type_: type[Any], *, block_name: str | None = None) -> None:
         self._type = type_
         super().__init__(invocation=_noop, block_name=block_name)
