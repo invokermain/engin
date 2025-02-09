@@ -11,7 +11,7 @@ that these providers require and so on.
 ## Defining a provider
 
 Any function that returns an object can be turned into a provider by using the marker
-class: 'Provide'.
+class: `Provide`.
 
 ```python
 from engin import Engin, Provide
@@ -60,6 +60,7 @@ greeter = await engin.assembler.get(Greeter)
 greeter.greet("Bob") # hello, Bob!
 ```
 
+
 # Providers are only called when required
 
 The Assembler will only call a provider when the type is requested, directly or indirectly
@@ -80,12 +81,13 @@ def evil_factory() -> int:
 # register them as providers with the Engin
 engin = Engin(Provide(string_factory), Provide(evil_factory))
 
-# this does not raise an error
+# this will not raise an error
 await engin.assembler.get(str)
 
-# this does raise an error
+# this will raise an error
 await engin.assembler.get(int)
 ```
+
 
 # Multiproviders
 
@@ -113,4 +115,33 @@ engin = Engin(Provide(animal_names_factory), Provide(other_animal_names_factory)
 animal_names = await engin.assembler.get(list[str])
 
 print(animal_names) # ["cat", "dog", "horse", "cow"]
+```
+
+
+# Discriminating providers of the same type
+
+Providers of the same type can be discriminated using annotations.
+
+```python
+from engin import Engin, Provide
+from typing import Annotated
+        
+# define our constructors
+def greeting_factory() -> Annotated[str, "greeting"]:
+   return "hello"
+
+def name_factory() -> Annotated[str, "name"]:
+    return "Francis"
+
+# register them as providers with the Engin
+engin = Engin(Provide(greeting_factory), Provide(name_factory))
+
+# this will return "hello"
+await engin.assembler.get(Annotated[str, "greeting"])
+
+# this will return "Francis"
+await engin.assembler.get(Annotated[str, "name"])
+
+# this will raise an error!
+await engin.assembler.get(Greeter)
 ```

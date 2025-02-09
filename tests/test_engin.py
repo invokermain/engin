@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from datetime import datetime
+from time import sleep
 
 import pytest
 
@@ -136,3 +137,51 @@ async def test_engin_with_lifecycle_using_run():
     await asyncio.gather(engin.run(), _stop_task())
     # lifecycle should have stopped by now
     assert state == 2
+
+
+async def test_engin_with_lifecycle_startup_hook():
+    state = 0
+
+    def foo(lifecycle: Lifecycle) -> None:
+        def startup() -> None:
+            nonlocal state
+            state = 1
+
+        lifecycle.on_start(startup)
+
+    engin = Engin(Invoke(foo))
+
+    await engin.start()
+    assert state == 1
+
+    await engin.stop()
+
+
+async def test_engin_with_blocking_sync_lifecycle_hooks():
+    class Blocker:
+        def __init__(self) -> None:
+            self.should_run = True
+
+        def run(self) -> None:
+            while self.should_run:
+                sleep(0.05)
+
+        def stop(self) -> None:
+            self.should_run = False
+
+    def blocker_factory(lifecycle: Lifecycle) -> Blocker:
+        blocker = Blocker()
+
+        lifecycle.on_start(blocker.run, background=True)
+        lifecycle.on_stop(blocker.stop)
+
+        return blocker
+
+    engin = Engin(Provide(blocker_factory), Entrypoint(Blocker))
+
+    await engin.start()
+    await engin.stop()
+
+    blocker = await engin.assembler.get(Blocker)
+
+    assert blocker.should_run is False

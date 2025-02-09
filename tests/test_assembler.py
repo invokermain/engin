@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import pytest
 
 from engin import Assembler, Invoke, Provide
@@ -65,3 +67,19 @@ async def test_assembler_with_unknown_type_raises_assembly_error():
 
     with pytest.raises(ProviderError):
         await assembler.get(str)
+
+
+async def test_annotations():
+    def make_str_1() -> Annotated[str, "1"]:
+        return "bar"
+
+    def make_str_2() -> Annotated[str, "2"]:
+        return "foo"
+
+    assembler = Assembler([Provide(make_str_1), Provide(make_str_2)])
+
+    with pytest.raises(LookupError):
+        await assembler.get(str)
+
+    assert await assembler.get(Annotated[str, "1"]) == "bar"
+    assert await assembler.get(Annotated[str, "2"]) == "foo"

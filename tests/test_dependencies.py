@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from engin import Provide
 from engin._dependency import Supply
 from tests.deps import make_aliased_int
@@ -45,3 +47,13 @@ def test_provide_with_alias():
     provider = Provide(make_aliased_int)
 
     assert provider.return_type_id.type
+
+
+def test_provide_with_annotation():
+    def make_str_1() -> Annotated[str, "1"]:
+        return "bar"
+
+    provider = Provide(make_str_1)
+
+    assert provider.return_type_id.type
+    assert str(provider.return_type_id) == "Annotated[str, 1]"
