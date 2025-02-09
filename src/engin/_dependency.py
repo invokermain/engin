@@ -136,7 +136,7 @@ class Provide(Dependency[Any, T]):
             return_type = self._func  # __init__ returns self
         else:
             try:
-                return_type = get_type_hints(self._func)["return"]
+                return_type = get_type_hints(self._func, include_extras=True)["return"]
             except KeyError as err:
                 raise RuntimeError(
                     f"Dependency '{self.name}' requires a return typehint"
