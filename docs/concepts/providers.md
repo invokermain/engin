@@ -69,7 +69,7 @@ greeter.greet("Bob") # hello, Bob!
 ```
 
 
-# Providers are only called when required
+## Providers are only called when required
 
 The Assembler will only call a provider when the type is requested, directly or indirectly
 when constructing an object. This means that your application will do the minimum work
@@ -97,7 +97,7 @@ await engin.assembler.get(int)
 ```
 
 
-# Multiproviders
+## Multiproviders
 
 Sometimes it is useful for many providers to construct a single collection of objects,
 these are called multiproviders. For example in a web application, many
@@ -126,7 +126,7 @@ print(animal_names) # ["cat", "dog", "horse", "cow"]
 ```
 
 
-# Discriminating providers of the same type
+## Discriminating providers of the same type
 
 Providers of the same type can be discriminated using annotations.
 
@@ -155,7 +155,7 @@ await engin.assembler.get(str)
 ```
 
 
-# Supply can be used for static objects
+## Supply can be used for static objects
 
 The `Supply` marker class can be used as a shorthand when provided static objects. The
 provided type is automatically inferred.
