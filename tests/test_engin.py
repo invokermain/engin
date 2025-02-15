@@ -2,7 +2,6 @@ import asyncio
 from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from datetime import datetime
-from time import sleep
 
 import pytest
 
