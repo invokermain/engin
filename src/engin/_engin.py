@@ -35,8 +35,7 @@ class Engin:
     Supply) and at least one invocation (Invoke or Entrypoint).
 
     When instantiated the Engin can be run. This is typically done via the `run` method,
-    but certain use cases, e.g. testing, it can be easier to use the `start` and `stop`
-    methods.
+    but for advanced usecases it can be easier to use the `start` and `stop` methods.
 
     When ran the Engin takes care of the complete application lifecycle:
     1. The Engin assembles all Invocations. Only Providers that are required to satisfy

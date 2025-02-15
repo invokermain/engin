@@ -3,10 +3,11 @@
 Providers are the factories of your application, they are reponsible for the construction
 of the objects that your application needs.
 
-The Engin only calls the providers that are necessary to do its job. More specifically:
-when starting up the Engin will call all providers necessary to run its invocations, and
-the Assembler (the component responsible for constructing types) will call any providers
-that these providers require and so on.
+Remember, the Engin only calls the providers that are necessary to run your application.
+More specifically: when starting up the Engin will call all providers necessary to run its
+invocations, and the Assembler (the component responsible for constructing types) will
+call any providers that these providers require and so on.
+
 
 ## Defining a provider
 
@@ -29,6 +30,13 @@ a_string = await engin.assembler.get(str)
 print(a_string) # hello
 ```
 
+Providers can be asynchronous as well, this factory function would work exactly the same
+in the above example.
+
+```python
+async def string_factory() -> str:
+   return "hello"
+```
 
 ## Providers can use other providers
 
@@ -92,7 +100,7 @@ await engin.assembler.get(int)
 # Multiproviders
 
 Sometimes it is useful for many providers to construct a single collection of objects,
-these are called multiproviders. An example usecase is in a web application, many
+these are called multiproviders. For example in a web application, many
 distinct providers could register one or more routes, and the root of the application
 would handle registering them.
 
@@ -131,7 +139,7 @@ def greeting_factory() -> Annotated[str, "greeting"]:
    return "hello"
 
 def name_factory() -> Annotated[str, "name"]:
-    return "Francis"
+    return "Jelena"
 
 # register them as providers with the Engin
 engin = Engin(Provide(greeting_factory), Provide(name_factory))
@@ -139,9 +147,30 @@ engin = Engin(Provide(greeting_factory), Provide(name_factory))
 # this will return "hello"
 await engin.assembler.get(Annotated[str, "greeting"])
 
-# this will return "Francis"
+# this will return "Jelena"
 await engin.assembler.get(Annotated[str, "name"])
 
-# this will raise an error!
-await engin.assembler.get(Greeter)
+# N.B. this will raise an error!
+await engin.assembler.get(str)
+```
+
+
+# Supply can be used for static objects
+
+The `Supply` marker class can be used as a shorthand when provided static objects. The
+provided type is automatically inferred.
+
+For example the first example on this page could be rewritten as:
+
+
+```python
+from engin import Engin, Supply
+
+# Supply the Engin with a str value
+engin = Engin(Supply("hello"))
+
+# construct the string
+a_string = await engin.assembler.get(str)
+
+print(a_string) # hello
 ```
