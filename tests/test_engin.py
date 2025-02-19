@@ -31,10 +31,19 @@ async def test_engin():
     def c(_: B) -> C:
         return C()
 
-    def main(c: C) -> None:
-        assert isinstance(c, C)
+    def multi_a() -> list[A]:
+        return [A()]
 
-    engin = Engin(Provide(a), Provide(b), Provide(c), Invoke(main))
+    def multi_a_2() -> list[A]:
+        return [A(), A()]
+
+    def main(c: C, multi_a: list[A]) -> None:
+        assert isinstance(c, C)
+        assert len(multi_a) == 3
+
+    engin = Engin(
+        Provide(a), Provide(b), Provide(c), Provide(multi_a), Provide(multi_a_2), Invoke(main)
+    )
 
     await engin.start()
     await engin.stop()
