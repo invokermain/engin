@@ -159,6 +159,8 @@ class Engin:
         started.
         """
         self._stop_requested_event.set()
+        if self._shutdown_task is None:
+            return
         await self._stop_complete_event.wait()
 
     async def _shutdown(self) -> None:

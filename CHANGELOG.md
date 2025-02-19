@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Engin now respects intended multiproviders behaviour instead of treating them as normal
   providers and overwriting existing multiproviders for that type.
+- `Engin.shutdown()` does not block if shutdown is called before startup, or after aborted
+  startup.
 
 
 ## [0.0.5] - 2025-01-29
