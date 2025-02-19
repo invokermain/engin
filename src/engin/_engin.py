@@ -81,8 +81,6 @@ class Engin:
         Args:
             *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
         """
-        self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
-        self._invokables: list[Invoke] = []
 
         self._stop_requested_event = Event()
         self._stop_complete_event = Event()
@@ -90,8 +88,16 @@ class Engin:
         self._shutdown_task: Task | None = None
         self._run_task: Task | None = None
 
+        # TODO: refactor _destruct_options and related attributes into a dedicated class?
+        self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
+        self._multiproviders: dict[TypeId, list[Provide]] = {}
+        self._invocations: list[Invoke] = []
+        # populates the above
         self._destruct_options(chain(self._LIB_OPTIONS, options))
-        self._assembler = Assembler(self._providers.values())
+        multi_providers = [p for multi in self._multiproviders.values() for p in multi]
+        self._assembler = Assembler(chain(self._providers.values(), multi_providers))
+        self._providers.clear()
+        self._multiproviders.clear()
 
     @property
     def assembler(self) -> Assembler:
@@ -119,7 +125,7 @@ class Engin:
         """
         LOG.info("starting engin")
         assembled_invocations: list[AssembledDependency] = [
-            await self._assembler.assemble(invocation) for invocation in self._invokables
+            await self._assembler.assemble(invocation) for invocation in self._invocations
         ]
 
         for invocation in assembled_invocations:
@@ -170,12 +176,19 @@ class Engin:
             if isinstance(opt, Block):
                 self._destruct_options(opt)
             if isinstance(opt, Provide | Supply):
-                existing = self._providers.get(opt.return_type_id)
-                self._log_option(opt, overwrites=existing)
-                self._providers[opt.return_type_id] = opt
+                if not opt.is_multiprovider:
+                    existing = self._providers.get(opt.return_type_id)
+                    self._log_option(opt, overwrites=existing)
+                    self._providers[opt.return_type_id] = opt
+                else:
+                    self._log_option(opt)
+                    if opt.return_type_id in self._multiproviders:
+                        self._multiproviders[opt.return_type_id].append(opt)
+                    else:
+                        self._multiproviders[opt.return_type_id] = [opt]
             elif isinstance(opt, Invoke):
                 self._log_option(opt)
-                self._invokables.append(opt)
+                self._invocations.append(opt)
 
     @staticmethod
     def _log_option(opt: Dependency, overwrites: Dependency | None = None) -> None:
