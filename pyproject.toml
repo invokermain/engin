@@ -4,7 +4,15 @@ version = "0.0.7"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+keywords = ["Dependency Injection", "Application Framework"]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/invokermain/engin"
+Documentation = "https://engin.readthedocs.io/en/latest/"
+Repository = "https://github.com/invokermain/engin.git"
+Changelog = "https://github.com/invokermain/engin/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
