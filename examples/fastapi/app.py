@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from pydantic_settings import BaseSettings
 
-from engin import Block, invoke, provide
+from engin import Block, provide
 
 
 class AppConfig(BaseSettings):
@@ -10,16 +10,20 @@ class AppConfig(BaseSettings):
 
 class AppBlock(Block):
     @provide
-    def app_factory(self, app_config: AppConfig) -> FastAPI:
-        return FastAPI(debug=app_config.debug)
-
-    @provide
     def default_config(self) -> AppConfig:
         return AppConfig()
 
-    @invoke
-    def add_health_endpoint(self, app: FastAPI) -> None:
-        async def health() -> dict[str, bool]:
-            return {"ok": True}
+    @provide
+    def app_factory(self, app_config: AppConfig, routers: list[APIRouter]) -> FastAPI:
+        app = FastAPI(debug=app_config.debug)
 
-        app.add_api_route(path="/health", endpoint=health)
+        for router in routers:
+            app.include_router(router)
+
+        app.add_api_route(path="/health", endpoint=_health)
+
+        return app
+
+
+async def _health() -> dict[str, bool]:
+    return {"ok": True}

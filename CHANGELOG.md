@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.9] - 2025-02-22
+
+### Added
+
+- Dependency class now has a new attribute: `func_name`.
+
+### Changed
+
+- Improved `engin-graph` output.
+- The `module` attribute of dependencies has been renamed to `origin`
+
+### Fixed
+
+- Options provided under the `options` on a Block now have the `block_name` set.
+
+
 ## [0.0.8] - 2025-02-22
 
 ### Added

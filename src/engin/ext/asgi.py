@@ -2,10 +2,11 @@ import traceback
 from collections.abc import Awaitable, Callable, MutableMapping
 from typing import Any, ClassVar, Protocol, TypeAlias
 
-from engin import Engin, Option
+from engin import Engin, Entrypoint, Option
 
 __all__ = ["ASGIEngin", "ASGIType"]
 
+from engin._graph import DependencyGrapher, Node
 
 _Scope: TypeAlias = MutableMapping[str, Any]
 _Message: TypeAlias = MutableMapping[str, Any]
@@ -48,6 +49,10 @@ class ASGIEngin(Engin, ASGIType):
     async def _startup(self) -> None:
         await self.start()
         self._asgi_app = await self._assembler.get(self._asgi_type)
+
+    def graph(self) -> list[Node]:
+        grapher = DependencyGrapher({**self._providers, **self._multiproviders})
+        return grapher.resolve([Entrypoint(self._asgi_type), *self._invocations])
 
 
 class _Rereceive:
