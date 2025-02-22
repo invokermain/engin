@@ -11,4 +11,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPIEngin(AppBlock(), CatBlock(), Supply(AppConfig(debug=True)))
 
-uvicorn.run(app)
+
+if __name__ == "__main__":
+    uvicorn.run(app)
