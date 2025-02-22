@@ -18,7 +18,6 @@ from engin._type_utils import TypeId, type_id_of
 P = ParamSpec("P")
 T = TypeVar("T")
 Func: TypeAlias = Callable[P, T]
-_SELF = object()
 
 
 def _noop(*args: Any, **kwargs: Any) -> None: ...
@@ -30,6 +29,10 @@ class Dependency(ABC, Generic[P, T]):
         self._is_async = iscoroutinefunction(func)
         self._signature = inspect.signature(self._func)
         self._block_name = block_name
+
+    @property
+    def module(self) -> str:
+        return self._func.__module__
 
     @property
     def block_name(self) -> str | None:

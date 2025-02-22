@@ -13,6 +13,7 @@ from engin import Entrypoint
 from engin._assembler import AssembledDependency, Assembler
 from engin._block import Block
 from engin._dependency import Dependency, Invoke, Provide, Supply
+from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._type_utils import TypeId
 
@@ -80,7 +81,6 @@ class Engin:
         Args:
             *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
         """
-
         self._stop_requested_event = Event()
         self._stop_complete_event = Event()
         self._exit_stack: AsyncExitStack = AsyncExitStack()
@@ -95,8 +95,6 @@ class Engin:
         self._destruct_options(chain(self._LIB_OPTIONS, options))
         multi_providers = [p for multi in self._multiproviders.values() for p in multi]
         self._assembler = Assembler(chain(self._providers.values(), multi_providers))
-        self._providers.clear()
-        self._multiproviders.clear()
 
     @property
     def assembler(self) -> Assembler:
@@ -161,6 +159,10 @@ class Engin:
         if self._shutdown_task is None:
             return
         await self._stop_complete_event.wait()
+
+    def graph(self) -> list[Node]:
+        grapher = DependencyGrapher({**self._providers, **self._multiproviders})
+        return grapher.resolve(self._invocations)
 
     async def _shutdown(self) -> None:
         LOG.info("stopping engin")

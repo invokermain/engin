@@ -19,4 +19,5 @@ async def main(http_client: AsyncClient) -> None:
 
 engin = Engin(Provide(new_httpx_client), Invoke(main))
 
-asyncio.run(engin.run())
+if __name__ == "__main__":
+    asyncio.run(engin.run())

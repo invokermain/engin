@@ -136,3 +136,23 @@ async def test_engin_with_lifecycle_using_run():
     await asyncio.gather(engin.run(), _stop_task())
     # lifecycle should have stopped by now
     assert state == 2
+
+
+def test_engin_graph():
+    def a() -> A:
+        return A()
+
+    def b(_: A) -> B:
+        return B()
+
+    def c(_: B) -> C:
+        return C()
+
+    def main(c: C) -> None:
+        assert isinstance(c, C)
+
+    engin = Engin(Provide(a), Provide(b), Provide(c), Invoke(main))
+
+    graph = engin.graph()
+
+    assert len(graph) == 3
