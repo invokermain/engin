@@ -59,6 +59,8 @@ class Block(Iterable[Provide | Invoke]):
                     raise RuntimeError("Block option is not an instance of Provide or Invoke")
                 opt.set_block_name(self._name)
                 self._options.append(opt)
+        for opt in self.options:
+            opt.set_block_name(self._name)
 
     @property
     def name(self) -> str:

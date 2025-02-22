@@ -8,8 +8,10 @@ from http.server import BaseHTTPRequestHandler
 from time import sleep
 from typing import Any
 
-from engin import Engin
-from engin._dependency import Dependency, Provide
+from engin import Engin, Entrypoint, Invoke
+from engin._dependency import Dependency, Provide, Supply
+from engin.ext.asgi import ASGIEngin
+from engin.ext.fastapi import APIRouteDependency
 
 # mute logging from importing of files + engin's debug logging.
 logging.disable()
@@ -17,9 +19,6 @@ logging.disable()
 args = ArgumentParser(
     prog="engin-graph",
     description="Creates a visualisation of your application's dependencies",
-)
-args.add_argument(
-    "-e", "--exclude", help="a list of packages or module to exclude", default=["engin"]
 )
 args.add_argument(
     "app",
@@ -37,7 +36,6 @@ def serve_graph() -> None:
     parsed = args.parse_args()
 
     app = parsed.app
-    excluded_modules = parsed.exclude
 
     try:
         module_name, engin_name = app.split(":", maxsplit=1)
@@ -60,13 +58,19 @@ def serve_graph() -> None:
 
     # transform dependencies into mermaid syntax
     dependencies = [
-        f"{_render_node(node['parent'])} --> {_render_node(node['node'])}"
+        f"{_render_node(node.parent)} --> {_render_node(node.node)}"
         for node in nodes
-        if node["parent"] is not None
-        and not _should_exclude(node["node"].module, excluded_modules)
+        if node.parent is not None
     ]
 
-    html = _GRAPH_HTML.replace("%%DATA%%", "\n".join(dependencies)).encode("utf8")
+    html = (
+        _GRAPH_HTML.replace("%%DATA%%", "\n".join(dependencies))
+        .replace(
+            "%%LEGEND%%",
+            ASGI_ENGIN_LEGEND if isinstance(instance, ASGIEngin) else DEFAULT_LEGEND,
+        )
+        .encode("utf8")
+    )
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -93,24 +97,66 @@ def serve_graph() -> None:
         print("Exiting the server...")
 
 
+_BLOCK_IDX: dict[str, int] = {}
+_SEEN_BLOCKS: list[str] = []
+
+
 def _render_node(node: Dependency) -> str:
+    node_id = id(node)
+    md = ""
+    style = ""
+
+    # format block name
+    if n := node.block_name:
+        md += f"_{n}_\n"
+        if n not in _BLOCK_IDX:
+            _BLOCK_IDX[n] = len(_SEEN_BLOCKS) % 8
+            _SEEN_BLOCKS.append(n)
+        style = f":::b{_BLOCK_IDX[n]}"
+
+    if isinstance(node, Supply):
+        md += f"{node.return_type_id}"
+        return f'{node_id}("`{md}`"){style}'
     if isinstance(node, Provide):
-        return str(node.return_type_id)
+        md += f"{node.return_type_id}"
+        return f'{node_id}["`{md}`"]{style}'
+    if isinstance(node, Entrypoint):
+        entrypoint_type = node.parameter_types[0]
+        md += f"{entrypoint_type}"
+        return f'{node_id}[/"`{md}`"\\]{style}'
+    if isinstance(node, Invoke):
+        md += f"{node.func_name}"
+        return f'{node_id}[/"`{md}`"/]{style}'
+    if isinstance(node, APIRouteDependency):
+        md += f"{node.name}"
+        return f'{node_id}[["`{md}`"]]{style}'
     else:
-        return node.name
-
-
-def _should_exclude(module: str, excluded: list[str]) -> bool:
-    return any(module.startswith(e) for e in excluded)
+        return f'{node_id}["`{node.name}`"]{style}'
 
 
 _GRAPH_HTML = """
 <!doctype html>
 <html lang="en">
   <body>
+    <div style="border-style:outset">
+        <p>LEGEND</p>
+        <pre class="mermaid">
+          graph LR
+            %%LEGEND%%
+            classDef b0 fill:#7fc97f;
+        </pre>
+    </div>
     <pre class="mermaid">
       graph TD
           %%DATA%%
+          classDef b0 fill:#7fc97f;
+          classDef b1 fill:#beaed4;
+          classDef b2 fill:#fdc086;
+          classDef b3 fill:#ffff99;
+          classDef b4 fill:#386cb0;
+          classDef b5 fill:#f0027f;
+          classDef b6 fill:#bf5b17;
+          classDef b7 fill:#666666;
     </pre>
     <script type="module">
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
@@ -120,3 +166,9 @@ _GRAPH_HTML = """
   </body>
 </html>
 """
+
+DEFAULT_LEGEND = (
+    "0[/Invoke/] ~~~ 1[/Entrypoint\\] ~~~ 2[Provide] ~~~ 3(Supply)"
+    ' ~~~ 4["`Block Grouping`"]:::b0'
+)
+ASGI_ENGIN_LEGEND = DEFAULT_LEGEND + " ~~~ 5[[API Route]]"

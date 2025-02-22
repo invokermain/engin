@@ -31,12 +31,22 @@ class Dependency(ABC, Generic[P, T]):
         self._block_name = block_name
 
     @property
-    def module(self) -> str:
+    def origin(self) -> str:
+        """
+        The module that this Dependency originated from.
+
+        Returns:
+            A string, e.g. "examples.fastapi.app"
+        """
         return self._func.__module__
 
     @property
     def block_name(self) -> str | None:
         return self._block_name
+
+    @property
+    def func_name(self) -> str:
+        return self._func.__name__
 
     @property
     def name(self) -> str:
@@ -106,6 +116,10 @@ class Entrypoint(Invoke):
         super().__init__(invocation=_noop, block_name=block_name)
 
     @property
+    def origin(self) -> str:
+        return self._type.__module__
+
+    @property
     def parameter_types(self) -> list[TypeId]:
         return [type_id_of(self._type)]
 
@@ -171,6 +185,10 @@ class Supply(Provide, Generic[T]):
         if self._type_hint is not None:
             self._get_val.__annotations__["return"] = type_hint
         super().__init__(builder=self._get_val, block_name=block_name)
+
+    @property
+    def origin(self) -> str:
+        return self._value.__module__
 
     @property
     def return_type(self) -> type[T]:
