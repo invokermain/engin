@@ -39,6 +39,7 @@ class Engin:
     but for advanced usecases it can be easier to use the `start` and `stop` methods.
 
     When ran the Engin takes care of the complete application lifecycle:
+
     1. The Engin assembles all Invocations. Only Providers that are required to satisfy
        the Invoke options parameters are assembled.
     2. All Invocations are run sequentially in the order they were passed in to the Engin.

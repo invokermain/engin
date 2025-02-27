@@ -71,7 +71,8 @@ considered idiomatic as they have more explicit semantics.
 
 Sometimes you want to have logic that runs before the lifecycle startup occurs and after
 the dependency graph is built, some examples might be:
-- Pining a server to check its healthy.
+
+- Pinging a server to check its healthy.
 - Running database migrations.
 - Configuring a logger.
 

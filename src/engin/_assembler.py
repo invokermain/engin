@@ -152,6 +152,8 @@ class Assembler:
             if type_id.multi:
                 LOG.warning(f"no provider for '{type_id}' defaulting to empty list")
                 providers = [(Supply([], type_hint=list[type_id.type]))]  # type: ignore[name-defined]
+                # store default to prevent the warning appearing multiple times
+                self._multiproviders[type_id] = providers
             else:
                 raise LookupError(f"No Provider registered for dependency '{type_id}'")
 
