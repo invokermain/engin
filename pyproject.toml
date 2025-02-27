@@ -1,6 +1,6 @@
 [project]
 name = "engin"
-version = "0.0.9"
+version = "0.0.10"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -100,6 +100,7 @@ check.sequence = [
 ]
 
 fix.default_item_type = "cmd"
-fix.sequence = ["ruff check src tests --fix"]
+fix.sequence = ["ruff check src tests examples --fix"]
 
 test = "pytest -s tests"
+docs = "mkdocs serve"

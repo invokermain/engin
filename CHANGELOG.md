@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.10] - 2025-02-27
+
+### Added
+
+- A utility function for ASGI extension `engin_to_lifespan` enabling users to easily
+  integrate Engin into an existing ASGI application.
+- Further documentation work, including a FastAPI guide.
+
+### Fixed
+
+- The warning for missing multiproviders is only logged once for each given type now.
+
+
 ## [0.0.9] - 2025-02-22
 
 ### Added

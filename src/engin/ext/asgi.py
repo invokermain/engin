@@ -1,10 +1,11 @@
 import traceback
-from collections.abc import Awaitable, Callable, MutableMapping
+from collections.abc import AsyncIterator, Awaitable, Callable, MutableMapping
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any, ClassVar, Protocol, TypeAlias
 
 from engin import Engin, Entrypoint, Option
 
-__all__ = ["ASGIEngin", "ASGIType"]
+__all__ = ["ASGIEngin", "ASGIType", "engin_to_lifespan"]
 
 from engin._graph import DependencyGrapher, Node
 
@@ -61,3 +62,26 @@ class _Rereceive:
 
     async def __call__(self, *args: Any, **kwargs: Any) -> _Message:
         return self._message
+
+
+def engin_to_lifespan(engin: Engin) -> Callable[[ASGIType], AbstractAsyncContextManager[None]]:
+    """
+    Transforms the Engin instance into an ASGI lifespan task.
+
+    This is to enable users to use the Engin framework with existing ASGI applications,
+    where it is not desired to replace the ASGI application with an ASGIEngin.
+
+    Args:
+        engin: the engin instance to transform.
+
+    Returns:
+        An ASGI lifespan task.
+    """
+
+    @asynccontextmanager
+    async def engin_lifespan(_: ASGIType) -> AsyncIterator[None]:
+        await engin.start()
+        yield
+        await engin.stop()
+
+    return engin_lifespan

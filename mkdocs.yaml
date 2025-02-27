@@ -5,6 +5,9 @@ site_url: !ENV READTHEDOCS_CANONICAL_URL
 theme:
     name: 'material'
     custom_dir: 'docs/overrides'
+    features:
+      - navigation.instant
+      - navigation.tabs
     palette:
       - scheme: 'default'
         media: '(prefers-color-scheme: light)'
@@ -21,6 +24,19 @@ theme:
 repo_name: invokermain/engin
 repo_url: https://github.com/invokermain/engin/
 edit_uri: ""
+
+nav:
+  - Home: "index.md"
+  - Getting Started: "getting-started.md"
+  - Concepts:
+      - Engin: "concepts/engin.md"
+      - Providers: "concepts/providers.md"
+      - Invocations: "concepts/invocations.md"
+      - Lifecycle: "concepts/lifecycle.md"
+  - Guides:
+      - Dependency Injection: "guides/dependency_injection.md"
+      - FastAPI: "guides/fastapi.md"
+  - Reference: "reference.md"
 
 extra_javascript:
   - js/readthedocs.js
@@ -39,6 +55,7 @@ plugins:
             ignore_init_summary: true
           merge_init_into_class: true
           show_signature_annotations: true
+          show_source: false
           signature_crossrefs: true
         import:
           - url: https://docs.python.org/3/objects.inv
@@ -48,6 +65,11 @@ watch:
   - src
 
 markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.blocks.caption
+  - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
