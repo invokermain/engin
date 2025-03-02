@@ -7,7 +7,7 @@ from typing import ClassVar, TypeVar
 from fastapi.routing import APIRoute
 
 from engin import Engin, Entrypoint, Invoke, Option
-from engin._dependency import Dependency, Supply
+from engin._dependency import Dependency, Supply, _noop
 from engin._graph import DependencyGrapher, Node
 from engin._type_utils import TypeId, type_id_of
 from engin.ext.asgi import ASGIEngin
@@ -113,7 +113,7 @@ def _extract_routes_from_supply(supply: Supply) -> list[Dependency]:
         inner = supply._value[0]
         if isinstance(inner, APIRouter):
             return [
-                APIRouteDependency(route, block_name=supply.block_name)
+                APIRouteDependency(supply, route)
                 for route in inner.routes
                 if isinstance(route, APIRoute)
             ]
@@ -128,13 +128,26 @@ class APIRouteDependency(Dependency):
     This class should never be constructed in application code.
     """
 
-    def __init__(self, route: APIRoute, block_name: str | None = None) -> None:
+    def __init__(
+        self,
+        wraps: Dependency,
+        route: APIRoute,
+    ) -> None:
         """
         Warning: this should never be constructed in application code.
         """
+        super().__init__(_noop, wraps.block_name)
+        self._wrapped = wraps
         self._route = route
         self._signature = inspect.signature(route.endpoint)
-        self._block_name = block_name
+
+    @property
+    def source_module(self) -> str:
+        return self._wrapped.source_module
+
+    @property
+    def source_package(self) -> str:
+        return self._wrapped.source_package
 
     @property
     def route(self) -> APIRoute:

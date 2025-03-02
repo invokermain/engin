@@ -28,6 +28,8 @@ args.add_argument(
     ),
 )
 
+_APP_ORIGIN = ""
+
 
 def serve_graph() -> None:
     # add cwd to path to enable local package imports
@@ -43,6 +45,9 @@ def serve_graph() -> None:
         raise ValueError(
             "Expected an argument of the form 'module:attribute', e.g. 'myapp:engin'"
         ) from None
+
+    global _APP_ORIGIN
+    _APP_ORIGIN = module_name.split(".", maxsplit=1)[0]
 
     module = importlib.import_module(module_name)
 
@@ -112,7 +117,17 @@ def _render_node(node: Dependency) -> str:
         if n not in _BLOCK_IDX:
             _BLOCK_IDX[n] = len(_SEEN_BLOCKS) % 8
             _SEEN_BLOCKS.append(n)
-        style = f":::b{_BLOCK_IDX[n]}"
+        style = f"b{_BLOCK_IDX[n]}"
+
+    node_root_package = node.source_package.split(".", maxsplit=1)[0]
+    if node_root_package != _APP_ORIGIN:
+        if style:
+            style += "E"
+        else:
+            style = "external"
+
+    if style:
+        style = f":::{style}"
 
     if isinstance(node, Supply):
         md += f"{node.return_type_id}"
@@ -144,6 +159,7 @@ _GRAPH_HTML = """
           graph LR
             %%LEGEND%%
             classDef b0 fill:#7fc97f;
+            classDef external stroke-dasharray: 5 5;
         </pre>
     </div>
     <pre class="mermaid">
@@ -157,6 +173,15 @@ _GRAPH_HTML = """
           classDef b5 fill:#f0027f;
           classDef b6 fill:#bf5b17;
           classDef b7 fill:#666666;
+          classDef b0E fill:#7fc97f,stroke-dasharray: 5 5;
+          classDef b1E fill:#beaed4,stroke-dasharray: 5 5;
+          classDef b2E fill:#fdc086,stroke-dasharray: 5 5;
+          classDef b3E fill:#ffff99,stroke-dasharray: 5 5;
+          classDef b4E fill:#386cb0,stroke-dasharray: 5 5;
+          classDef b5E fill:#f0027f,stroke-dasharray: 5 5;
+          classDef b6E fill:#bf5b17,stroke-dasharray: 5 5;
+          classDef b7E fill:#666666,stroke-dasharray: 5 5;
+          classDef external stroke-dasharray: 5 5;
     </pre>
     <script type="module">
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
@@ -169,6 +194,6 @@ _GRAPH_HTML = """
 
 DEFAULT_LEGEND = (
     "0[/Invoke/] ~~~ 1[/Entrypoint\\] ~~~ 2[Provide] ~~~ 3(Supply)"
-    ' ~~~ 4["`Block Grouping`"]:::b0'
+    ' ~~~ 4["`Block Grouping`"]:::b0 ~~~ 5[External Dependency]:::external'
 )
-ASGI_ENGIN_LEGEND = DEFAULT_LEGEND + " ~~~ 5[[API Route]]"
+ASGI_ENGIN_LEGEND = DEFAULT_LEGEND + " ~~~ 6[[API Route]]"
