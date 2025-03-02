@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/invokermain/engin/graph/badge.svg?token=4PJOIMV6IB)](https://codecov.io/gh/invokermain/engin)
+
 # Engin 🏎️
 
 Engin is a zero-dependency application framework for modern Python.
