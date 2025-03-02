@@ -3,6 +3,7 @@ import typing
 from abc import ABC
 from collections.abc import Awaitable, Callable
 from inspect import Parameter, Signature, isclass, iscoroutinefunction
+from types import FrameType
 from typing import (
     Any,
     Generic,
@@ -23,22 +24,43 @@ Func: TypeAlias = Callable[P, T]
 def _noop(*args: Any, **kwargs: Any) -> None: ...
 
 
+def _walk_stack() -> FrameType:
+    stack = inspect.stack()[1]
+    frame = stack.frame
+    while True:
+        if frame.f_globals["__package__"] != "engin" or frame.f_back is None:
+            return frame
+        else:
+            frame = frame.f_back
+
+
 class Dependency(ABC, Generic[P, T]):
     def __init__(self, func: Func[P, T], block_name: str | None = None) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
         self._signature = inspect.signature(self._func)
         self._block_name = block_name
+        self._source_frame = _walk_stack()
 
     @property
-    def origin(self) -> str:
+    def source_module(self) -> str:
         """
         The module that this Dependency originated from.
 
         Returns:
             A string, e.g. "examples.fastapi.app"
         """
-        return self._func.__module__
+        return self._source_frame.f_globals["__name__"]  # type: ignore[no-any-return]
+
+    @property
+    def source_package(self) -> str:
+        """
+        The package that this Dependency originated from.
+
+        Returns:
+            A string, e.g. "engin"
+        """
+        return self._source_frame.f_globals["__package__"]  # type: ignore[no-any-return]
 
     @property
     def block_name(self) -> str | None:
@@ -116,10 +138,6 @@ class Entrypoint(Invoke):
         super().__init__(invocation=_noop, block_name=block_name)
 
     @property
-    def origin(self) -> str:
-        return self._type.__module__
-
-    @property
     def parameter_types(self) -> list[TypeId]:
         return [type_id_of(self._type)]
 
@@ -185,10 +203,6 @@ class Supply(Provide, Generic[T]):
         if self._type_hint is not None:
             self._get_val.__annotations__["return"] = type_hint
         super().__init__(builder=self._get_val, block_name=block_name)
-
-    @property
-    def origin(self) -> str:
-        return self._value.__module__
 
     @property
     def return_type(self) -> type[T]:

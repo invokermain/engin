@@ -1,6 +1,6 @@
 [project]
 name = "engin"
-version = "0.0.10"
+version = "0.0.11"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,9 @@ dev-dependencies = [
 docs = [
     "mkdocs-material>=9.5.50",
     "mkdocstrings[python]>=0.27.0",
+]
+dev = [
+    "pytest-cov>=6.0.0",
 ]
 
 
@@ -103,4 +106,5 @@ fix.default_item_type = "cmd"
 fix.sequence = ["ruff check src tests examples --fix"]
 
 test = "pytest -s tests"
+ci-test = "pytest -s tests --cov-branch --cov-report=xml"
 docs = "mkdocs serve"
