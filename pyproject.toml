@@ -32,6 +32,7 @@ dev-dependencies = [
     "ruff>=0",
     "starlette>=0.39.2",
     "uvicorn>=0.31.1",
+    "pytest-cov>=6.0.0",
 ]
 
 
@@ -39,9 +40,6 @@ dev-dependencies = [
 docs = [
     "mkdocs-material>=9.5.50",
     "mkdocstrings[python]>=0.27.0",
-]
-dev = [
-    "pytest-cov>=6.0.0",
 ]
 
 
@@ -75,10 +73,15 @@ ignore = [
 
 
 [tool.pytest.ini_options]
-log_cli = true
+log_cli = false
 log_cli_level = "DEBUG"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/engin/scripts/**"]
 
 
 [tool.mypy]
@@ -105,6 +108,6 @@ check.sequence = [
 fix.default_item_type = "cmd"
 fix.sequence = ["ruff check src tests examples --fix"]
 
-test = "pytest -s tests"
-ci-test = "pytest -s tests --cov-branch --cov-report=xml"
+test = "pytest tests"
+ci-test = "pytest --cov=engin --cov-branch --cov-report=xml tests"
 docs = "mkdocs serve"
