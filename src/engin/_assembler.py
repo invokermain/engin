@@ -141,7 +141,44 @@ class Assembler:
             return value  # type: ignore[return-value]
 
     def has(self, type_: type[T]) -> bool:
-        return type_id_of(type_) in self._providers
+        """
+        Returns True if this Assembler has a provider for the given type.
+
+        Args:
+            type_: the type to check.
+
+        Returns:
+            True if the Assembler has a provider for type else False.
+        """
+        type_id = type_id_of(type_)
+        if type_id.multi:
+            return type_id in self._multiproviders
+        else:
+            return type_id in self._providers
+
+    def add(self, provider: Provide) -> None:
+        """
+        Add a provider to the Assembler post-initialisation.
+
+        Args:
+            provider: the Provide instance to add.
+
+        Returns:
+             None
+
+        Raises:
+            ValueError: if a provider for this type already exists.
+        """
+        type_id = provider.return_type_id
+        if provider.is_multiprovider:
+            if type_id in self._multiproviders:
+                self._multiproviders[type_id].append(provider)
+            else:
+                self._multiproviders[type_id] = [provider]
+        else:
+            if type_id in self._providers:
+                raise ValueError(f"A provider for '{type_id}' already exists")
+            self._providers[type_id] = provider
 
     def _resolve_providers(self, type_id: TypeId) -> Collection[Provide]:
         if type_id.multi:

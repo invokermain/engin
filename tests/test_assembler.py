@@ -83,3 +83,40 @@ async def test_annotations():
 
     assert await assembler.get(Annotated[str, "1"]) == "bar"
     assert await assembler.get(Annotated[str, "2"]) == "foo"
+
+
+async def test_assembler_has():
+    def make_str() -> str:
+        raise RuntimeError("foo")
+
+    assembler = Assembler([Provide(make_str)])
+
+    assert assembler.has(str)
+    assert not assembler.has(int)
+    assert not assembler.has(list[str])
+
+
+async def test_assembler_has_multi():
+    def make_str() -> list[str]:
+        raise RuntimeError("foo")
+
+    assembler = Assembler([Provide(make_str)])
+
+    assert assembler.has(list[str])
+    assert not assembler.has(int)
+    assert not assembler.has(str)
+
+
+async def test_assembler_add():
+    assembler = Assembler([])
+    assembler.add(Provide(make_int))
+    assembler.add(Provide(make_many_int))
+
+    assert assembler.has(int)
+    assert assembler.has(list[int])
+
+    with pytest.raises(ValueError, match="exists"):
+        assembler.add(Provide(make_int))
+
+    # can always add more multiproviders
+    assembler.add(Provide(make_many_int))

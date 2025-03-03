@@ -6,7 +6,7 @@ from typing import ClassVar, TypeVar
 
 from fastapi.routing import APIRoute
 
-from engin import Engin, Entrypoint, Invoke, Option
+from engin import Assembler, Engin, Entrypoint, Invoke, Option
 from engin._dependency import Dependency, Supply, _noop
 from engin._graph import DependencyGrapher, Node
 from engin._type_utils import TypeId, type_id_of
@@ -24,15 +24,16 @@ except ImportError as err:
 __all__ = ["APIRouteDependency", "FastAPIEngin", "Inject"]
 
 
-def _attach_engin(
-    app: FastAPI,
-    engin: Engin,
-) -> None:
-    app.state.engin = engin
+def _attach_assembler(app: FastAPI, engin: Engin) -> None:
+    """
+    An invocation that attaches the Engin's Assembler to the FastAPI application, enabling
+    the Inject marker.
+    """
+    app.state.assembler = engin.assembler
 
 
 class FastAPIEngin(ASGIEngin):
-    _LIB_OPTIONS: ClassVar[list[Option]] = [*ASGIEngin._LIB_OPTIONS, Invoke(_attach_engin)]
+    _LIB_OPTIONS: ClassVar[list[Option]] = [*ASGIEngin._LIB_OPTIONS, Invoke(_attach_assembler)]
     _asgi_type = FastAPI
 
     def graph(self) -> list[Node]:
@@ -40,7 +41,7 @@ class FastAPIEngin(ASGIEngin):
         return grapher.resolve(
             [
                 Entrypoint(self._asgi_type),
-                *[i for i in self._invocations if i.func_name != "_attach_engin"],
+                *[i for i in self._invocations if i.func_name != "_attach_assembler"],
             ]
         )
 
@@ -50,8 +51,11 @@ T = TypeVar("T")
 
 def Inject(interface: type[T]) -> Depends:
     async def inner(conn: HTTPConnection) -> T:
-        engin: Engin = conn.app.state.engin
-        return await engin.assembler.get(interface)
+        try:
+            assembler: Assembler = conn.app.state.assembler
+        except AttributeError:
+            raise RuntimeError("Assembler is not attached to Application state") from None
+        return await assembler.get(interface)
 
     dep = Depends(inner)
     dep.__engin__ = True  # type: ignore[attr-defined]
