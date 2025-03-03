@@ -1,9 +1,10 @@
+import contextlib
 import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, MutableMapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any, ClassVar, Protocol, TypeAlias
 
-from engin import Engin, Entrypoint, Option
+from engin import Engin, Entrypoint, Option, Supply
 
 __all__ = ["ASGIEngin", "ASGIType", "engin_to_lifespan"]
 
@@ -79,7 +80,13 @@ def engin_to_lifespan(engin: Engin) -> Callable[[ASGIType], AbstractAsyncContext
     """
 
     @asynccontextmanager
-    async def engin_lifespan(_: ASGIType) -> AsyncIterator[None]:
+    async def engin_lifespan(app: ASGIType) -> AsyncIterator[None]:
+        # ensure the Engin
+        with contextlib.suppress(ValueError):
+            engin.assembler.add(Supply(app))
+
+        app.state.assembler = engin.assembler  # type: ignore[attr-defined]
+
         await engin.start()
         yield
         await engin.stop()

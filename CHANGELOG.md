@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.12] - 2025-03-03
+
+### Added
+
+- `Assembler` has a new method `add(provider: Provide) -> None` which allows adding a
+  provider to the Assembler post initialisation.
+
+### Changed
+
+- `Provide` now raises a `ValueError` if the factory function is circular, i.e. one of its
+  parameters is the same as its return type as the behaviour of this is undefined.
+- The ASGI utility method `engin_to_lifespan` has been improved so that it works "out of
+  the box" for more use cases now.
+
+
 ## [0.0.11] - 2025-03-02
 
 ### Added

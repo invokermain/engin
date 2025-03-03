@@ -1,5 +1,7 @@
 from typing import Annotated
 
+import pytest
+
 from engin import Provide
 from engin._dependency import Entrypoint, Supply
 from tests.deps import make_aliased_int, make_int
@@ -75,3 +77,17 @@ def test_dependency_sources():
     entrypoint = Entrypoint(3)
     assert entrypoint.source_module == "tests.test_dependencies"
     assert entrypoint.source_package == "tests"
+
+
+def test_provider_cannot_depend_on_self():
+    def invalid_provider_1(a: int) -> int:
+        return 1
+
+    def invalid_provider_2(a: list[int]) -> list[int]:
+        return [1]
+
+    with pytest.raises(ValueError, match="return type"):
+        Provide(invalid_provider_1)
+
+    with pytest.raises(ValueError, match="return type"):
+        Provide(invalid_provider_2)

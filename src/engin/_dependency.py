@@ -158,6 +158,15 @@ class Provide(Dependency[Any, T]):
         super().__init__(func=builder, block_name=block_name)
         self._is_multi = typing.get_origin(self.return_type) is list
 
+        # Validate that the provider does to depend on its own output value, as this will
+        # cause a recursion error and is undefined behaviour wise.
+        if any(
+            self.return_type == param.annotation
+            for param in self.signature.parameters.values()
+        ):
+            raise ValueError("A provider cannot depend on its own return type")
+
+        # Validate that multiproviders only return a list of one type.
         if self._is_multi:
             args = typing.get_args(self.return_type)
             if len(args) != 1:
