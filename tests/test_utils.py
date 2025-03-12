@@ -60,3 +60,10 @@ def test_type_id_of_complex_annotation():
     type_id = type_id_of(annotated)
     assert type_id == TypeId(type=Annotated[Callable[[int], str], "Activity"], multi=False)
     assert str(type_id) == "Annotated[Callable[[int], str], Activity]"
+
+
+def test_type_id_of_union():
+    union = int | str
+    type_id = type_id_of(union)
+    assert type_id == TypeId(type=int | str, multi=False)
+    assert str(type_id) == "Union[int, str]"

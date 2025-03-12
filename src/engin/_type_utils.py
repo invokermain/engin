@@ -1,8 +1,9 @@
 import typing
 from dataclasses import dataclass
+from types import UnionType
 from typing import Any
 
-_implict_modules = ["builtins", "typing", "collections.abc"]
+_implict_modules = ["builtins", "typing", "collections.abc", "types"]
 
 
 @dataclass(frozen=True, eq=True, slots=True)
@@ -43,7 +44,7 @@ class TypeId:
 def _args_to_str(type_: Any) -> str:
     args = typing.get_args(type_)
     if args:
-        arg_str = f"{type_.__name__}["
+        arg_str = "Union[" if isinstance(type_, UnionType) else f"{type_.__name__}["
         for idx, arg in enumerate(args):
             if isinstance(arg, list):
                 arg_str += "["
