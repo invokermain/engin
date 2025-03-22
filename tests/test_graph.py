@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from engin import Provide, Supply
 from engin._graph import DependencyGrapher
@@ -17,7 +17,7 @@ def test_dependency_grapher():
     int_provider = Provide(provide_int)
     str_provider = Provide(provide_str)
     many_str_provider = Provide(provide_many_str)
-    dt_supplier = Supply(datetime.now())
+    dt_supplier = Supply(datetime.now(UTC))
 
     grapher = DependencyGrapher(
         {
