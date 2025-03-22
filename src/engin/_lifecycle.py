@@ -1,6 +1,8 @@
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
+from inspect import iscoroutinefunction
 from types import TracebackType
 from typing import TypeAlias, TypeGuard, cast
 
@@ -44,6 +46,18 @@ class Lifecycle:
 
             lifecycle.append(task)
         ```
+
+        Defining a custom lifecycle using a LifecycleHook.
+
+        ```python
+        def my_provider(lifecycle: Lifecycle) -> str:
+            connection_pool = ConnectionPool()
+
+            lifecycle.append(LifecycleHook(
+                on_start=connection_pool.connect,
+                on_stop=connection_pool.close,
+            ))
+        ```
     """
 
     def __init__(self) -> None:
@@ -69,6 +83,38 @@ class Lifecycle:
         return self._context_managers[:]
 
 
+class LifecycleHook(AbstractAsyncContextManager):
+    def __init__(
+        self,
+        on_start: Callable[[], None | Awaitable[None]] | None = None,
+        on_stop: Callable[[], None | Awaitable[None]] | None = None,
+    ) -> None:
+        self._on_start = on_start
+        self._on_stop = on_stop
+
+    async def __aenter__(self) -> None:
+        if self._on_start is not None:
+            func = self._on_start
+            if iscoroutinefunction(func):
+                await func()
+            else:
+                await asyncio.to_thread(func)
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
+        if self._on_stop is not None:
+            func = self._on_stop
+            if iscoroutinefunction(func):
+                await func()
+            else:
+                await asyncio.to_thread(func)
+
+
 class _AExitSuppressingAsyncContextManager(AbstractAsyncContextManager):
     def __init__(self, cm: _AnyContextManager) -> None:
         self._cm = cm
@@ -77,7 +123,7 @@ class _AExitSuppressingAsyncContextManager(AbstractAsyncContextManager):
         if self._is_async_cm(self._cm):
             await self._cm.__aenter__()
         else:
-            await asyncio.to_thread(cast(AbstractContextManager, self._cm).__enter__)
+            await asyncio.to_thread(cast("AbstractContextManager", self._cm).__enter__)
 
     async def __aexit__(
         self,
@@ -91,7 +137,7 @@ class _AExitSuppressingAsyncContextManager(AbstractAsyncContextManager):
                 await self._cm.__aexit__(exc_type, exc_value, traceback)
             else:
                 await asyncio.to_thread(
-                    cast(AbstractContextManager, self._cm).__exit__,
+                    cast("AbstractContextManager", self._cm).__exit__,
                     exc_type,
                     exc_value,
                     traceback,

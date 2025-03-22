@@ -115,8 +115,5 @@ async def test_assembler_add():
     assert assembler.has(int)
     assert assembler.has(list[int])
 
-    with pytest.raises(ValueError, match="exists"):
-        assembler.add(Provide(make_int))
-
     # can always add more multiproviders
     assembler.add(Provide(make_many_int))

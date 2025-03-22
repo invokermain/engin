@@ -54,7 +54,7 @@ class Assembler:
     def __init__(self, providers: Iterable[Provide]) -> None:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
-        self._dependencies: dict[TypeId, Any] = {}
+        self._assembled_outputs: dict[TypeId, Any] = {}
         self._consumed_providers: set[Provide[Any]] = set()
         self._lock = asyncio.Lock()
 
@@ -107,12 +107,13 @@ class Assembler:
             The constructed value.
         """
         type_id = type_id_of(type_)
-        if type_id in self._dependencies:
-            return cast(T, self._dependencies[type_id])
+        if type_id in self._assembled_outputs:
+            return cast("T", self._assembled_outputs[type_id])
         if type_id.multi:
-            out = []
             if type_id not in self._multiproviders:
                 raise LookupError(f"no provider found for target type id '{type_id}'")
+
+            out = []
             for provider in self._multiproviders[type_id]:
                 assembled_dependency = await self.assemble(provider)
                 try:
@@ -123,11 +124,12 @@ class Assembler:
                         error_type=type(err),
                         error_message=str(err),
                     ) from err
-            self._dependencies[type_id] = out
+            self._assembled_outputs[type_id] = out
             return out  # type: ignore[return-value]
         else:
             if type_id not in self._providers:
                 raise LookupError(f"no provider found for target type id '{type_id}'")
+
             assembled_dependency = await self.assemble(self._providers[type_id])
             try:
                 value = await assembled_dependency()
@@ -137,7 +139,7 @@ class Assembler:
                     error_type=type(err),
                     error_message=str(err),
                 ) from err
-            self._dependencies[type_id] = value
+            self._assembled_outputs[type_id] = value
             return value  # type: ignore[return-value]
 
     def has(self, type_: type[T]) -> bool:
@@ -160,24 +162,27 @@ class Assembler:
         """
         Add a provider to the Assembler post-initialisation.
 
+        If this replaces an existing provider, this will clear any previously assembled
+        output for the existing Provider.
+
         Args:
             provider: the Provide instance to add.
 
         Returns:
              None
-
-        Raises:
-            ValueError: if a provider for this type already exists.
         """
         type_id = provider.return_type_id
         if provider.is_multiprovider:
             if type_id in self._multiproviders:
+                if type_id in self._assembled_outputs:
+                    del self._assembled_outputs[type_id]
                 self._multiproviders[type_id].append(provider)
             else:
                 self._multiproviders[type_id] = [provider]
         else:
-            if type_id in self._providers:
-                raise ValueError(f"A provider for '{type_id}' already exists")
+            if provider in self._consumed_providers:
+                self._consumed_providers.remove(provider)
+                del self._assembled_outputs[type_id]
             self._providers[type_id] = provider
 
     def _resolve_providers(self, type_id: TypeId) -> Collection[Provide]:
@@ -218,12 +223,12 @@ class Assembler:
                     provider=provider, error_type=type(err), error_message=str(err)
                 ) from err
             if provider.is_multiprovider:
-                if type_id in self._dependencies:
-                    self._dependencies[type_id].extend(value)
+                if type_id in self._assembled_outputs:
+                    self._assembled_outputs[type_id].extend(value)
                 else:
-                    self._dependencies[type_id] = value
+                    self._assembled_outputs[type_id] = value
             else:
-                self._dependencies[type_id] = value
+                self._assembled_outputs[type_id] = value
 
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
@@ -233,10 +238,10 @@ class Assembler:
                 args.append(object())
                 continue
             param_key = type_id_of(param.annotation)
-            has_dependency = param_key in self._dependencies
+            has_dependency = param_key in self._assembled_outputs
             if not has_dependency:
                 await self._satisfy(param_key)
-            val = self._dependencies[param_key]
+            val = self._assembled_outputs[param_key]
             if param.kind == param.POSITIONAL_ONLY:
                 args.append(val)
             else:

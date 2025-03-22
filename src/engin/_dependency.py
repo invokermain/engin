@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 from inspect import Parameter, Signature, isclass, iscoroutinefunction
 from types import FrameType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Generic,
     ParamSpec,
@@ -14,7 +15,11 @@ from typing import (
     get_type_hints,
 )
 
+from engin._option import Option
 from engin._type_utils import TypeId, type_id_of
+
+if TYPE_CHECKING:
+    from engin._engin import Engin
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -34,7 +39,7 @@ def _walk_stack() -> FrameType:
             frame = frame.f_back
 
 
-class Dependency(ABC, Generic[P, T]):
+class Dependency(ABC, Option, Generic[P, T]):
     def __init__(self, func: Func[P, T], block_name: str | None = None) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
@@ -95,7 +100,7 @@ class Dependency(ABC, Generic[P, T]):
 
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         if self._is_async:
-            return await cast(Awaitable[T], self._func(*args, **kwargs))
+            return await cast("Awaitable[T]", self._func(*args, **kwargs))
         else:
             return self._func(*args, **kwargs)
 
@@ -121,6 +126,9 @@ class Invoke(Dependency):
 
     def __init__(self, invocation: Func[P, T], block_name: str | None = None) -> None:
         super().__init__(func=invocation, block_name=block_name)
+
+    def apply(self, engin: "Engin") -> None:
+        engin._invocations.append(self)
 
     def __str__(self) -> str:
         return f"Invoke({self.name})"
@@ -190,11 +198,20 @@ class Provide(Dependency[Any, T]):
 
     @property
     def return_type_id(self) -> TypeId:
-        return type_id_of(self.return_type)
+        return TypeId.from_type(self.return_type)
 
     @property
     def is_multiprovider(self) -> bool:
         return self._is_multi
+
+    def apply(self, engin: "Engin") -> None:
+        if self.is_multiprovider:
+            if self.return_type_id in engin._multiproviders:
+                engin._multiproviders[self.return_type_id].append(self)
+            else:
+                engin._multiproviders[self.return_type_id] = [self]
+        else:
+            engin._providers[self.return_type_id] = self
 
     def __hash__(self) -> int:
         return hash(self.return_type_id)

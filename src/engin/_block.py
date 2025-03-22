@@ -1,8 +1,13 @@
 import inspect
-from collections.abc import Iterable, Iterator
-from typing import ClassVar
+from collections.abc import Iterable, Sequence
+from itertools import chain
+from typing import TYPE_CHECKING, ClassVar
 
-from engin._dependency import Func, Invoke, Provide
+from engin._dependency import Dependency, Func, Invoke, Provide
+from engin._option import Option
+
+if TYPE_CHECKING:
+    from engin._engin import Engin
 
 
 def provide(func: Func) -> Func:
@@ -21,7 +26,7 @@ def invoke(func: Func) -> Func:
     return func
 
 
-class Block(Iterable[Provide | Invoke]):
+class Block(Option):
     """
     A Block is a collection of providers and invocations.
 
@@ -48,23 +53,21 @@ class Block(Iterable[Provide | Invoke]):
         ```
     """
 
-    options: ClassVar[list[Provide | Invoke]] = []
+    name: ClassVar[str | None] = None
+    options: ClassVar[Sequence[Option]] = []
 
-    def __init__(self, /, block_name: str | None = None) -> None:
-        self._options: list[Provide | Invoke] = self.options[:]
-        self._name = block_name or f"{type(self).__name__}"
-        for _, method in inspect.getmembers(self):
-            if opt := getattr(method, "_opt", None):
-                if not isinstance(opt, Provide | Invoke):
+    @classmethod
+    def apply(cls, engin: "Engin") -> None:
+        block_name = cls.name or f"{cls.__name__}"
+        for option in chain(cls.options, cls._method_options()):
+            if isinstance(option, Dependency):
+                option._block_name = block_name
+            option.apply(engin)
+
+    @classmethod
+    def _method_options(cls) -> Iterable[Provide | Invoke]:
+        for _, method in inspect.getmembers(cls):
+            if option := getattr(method, "_opt", None):
+                if not isinstance(option, Provide | Invoke):
                     raise RuntimeError("Block option is not an instance of Provide or Invoke")
-                opt.set_block_name(self._name)
-                self._options.append(opt)
-        for opt in self.options:
-            opt.set_block_name(self._name)
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def __iter__(self) -> Iterator[Provide | Invoke]:
-        return iter(self._options)
+                yield option

@@ -13,7 +13,7 @@ def test_block():
 
     my_block = MyBlock()
 
-    options = list(iter(my_block))
+    options = list(my_block._method_options())
     assert len(options) == 2
 
     assert Engin(my_block)

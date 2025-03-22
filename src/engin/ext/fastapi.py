@@ -33,7 +33,10 @@ def _attach_assembler(app: FastAPI, engin: Engin) -> None:
 
 
 class FastAPIEngin(ASGIEngin):
-    _LIB_OPTIONS: ClassVar[list[Option]] = [*ASGIEngin._LIB_OPTIONS, Invoke(_attach_assembler)]
+    _LIB_OPTIONS: ClassVar[list[Option]] = [
+        *ASGIEngin._LIB_OPTIONS,
+        Invoke(_attach_assembler),
+    ]
     _asgi_type = FastAPI
 
     def graph(self) -> list[Node]:
@@ -183,3 +186,6 @@ class APIRouteDependency(Dependency):
     def name(self) -> str:
         methods = ",".join(self._route.methods)
         return f"{methods} {self._route.path}"
+
+    def apply(self, engin: Engin) -> None:
+        raise NotImplementedError("APIRouteDependency is not a real dependency")

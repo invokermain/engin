@@ -3,41 +3,48 @@ import logging
 import socketserver
 import sys
 import threading
-from argparse import ArgumentParser
 from http.server import BaseHTTPRequestHandler
 from time import sleep
-from typing import Any
+from typing import Annotated, Any
+
+import typer
+from rich import print
 
 from engin import Engin, Entrypoint, Invoke
 from engin._dependency import Dependency, Provide, Supply
+from engin.cli._utils import print_error
 from engin.ext.asgi import ASGIEngin
 from engin.ext.fastapi import APIRouteDependency
+
+cli = typer.Typer()
+
 
 # mute logging from importing of files + engin's debug logging.
 logging.disable()
 
-args = ArgumentParser(
-    prog="engin-graph",
-    description="Creates a visualisation of your application's dependencies",
-)
-args.add_argument(
-    "app",
-    help=(
-        "the import path of your Engin instance, in the form "
-        "'package:application', e.g. 'app.main:engin'"
-    ),
-)
 
 _APP_ORIGIN = ""
 
+_CLI_HELP = {
+    "app": (
+        "The import path of your Engin instance, in the form 'package:application'"
+        ", e.g. 'app.main:engin'"
+    )
+}
 
-def serve_graph() -> None:
+
+@cli.command(name="graph")
+def serve_graph(
+    app: Annotated[
+        str,
+        typer.Argument(help=_CLI_HELP["app"]),
+    ],
+) -> None:
+    """
+    Creates a visualisation of your application's dependencies.
+    """
     # add cwd to path to enable local package imports
     sys.path.insert(0, "")
-
-    parsed = args.parse_args()
-
-    app = parsed.app
 
     try:
         module_name, engin_name = app.split(":", maxsplit=1)
@@ -53,11 +60,11 @@ def serve_graph() -> None:
 
     try:
         instance = getattr(module, engin_name)
-    except LookupError:
-        raise LookupError(f"Module '{module_name}' has no attribute '{engin_name}'") from None
+    except AttributeError:
+        print_error(f"module '{module_name}' has no attribute '{engin_name}'")
 
     if not isinstance(instance, Engin):
-        raise TypeError(f"'{app}' is not an Engin instance")
+        print_error(f"'{app}' is not an Engin instance")
 
     nodes = instance.graph()
 
