@@ -42,6 +42,7 @@ class ASGIEngin(Engin, ASGIType):
                 except Exception as err:
                     exc = "".join(traceback.format_exception(err))
                     await send({"type": "lifespan.startup.failed", "message": exc})
+                    raise
 
             elif message["type"] == "lifespan.shutdown":
                 await self.stop()
@@ -49,8 +50,8 @@ class ASGIEngin(Engin, ASGIType):
         await self._asgi_app(scope, receive, send)
 
     async def _startup(self) -> None:
-        await self.start()
         self._asgi_app = await self._assembler.get(self._asgi_type)
+        await self.start()
 
     def graph(self) -> list[Node]:
         grapher = DependencyGrapher({**self._providers, **self._multiproviders})
