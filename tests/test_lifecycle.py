@@ -27,7 +27,7 @@ class AsyncTracker:
         self.state = 2
 
 
-@pytest.mark.parametrize("tracker", (Tracker(), AsyncTracker()))
+@pytest.mark.parametrize("tracker", [(Tracker(), AsyncTracker())])
 async def test_lifecycle_hook(tracker):
     tracker = Tracker()
 
