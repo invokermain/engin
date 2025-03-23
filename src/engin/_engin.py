@@ -9,7 +9,7 @@ from types import FrameType
 from typing import ClassVar
 
 from engin._assembler import AssembledDependency, Assembler
-from engin._dependency import Dependency, Entrypoint, Invoke, Provide, Supply
+from engin._dependency import Invoke, Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._option import Option
@@ -82,7 +82,9 @@ class Engin:
         self._shutdown_task: Task | None = None
         self._run_task: Task | None = None
 
-        self._providers: dict[TypeId, Provide] = {TypeId.from_type(Engin): Provide(self._self)}
+        self._providers: dict[TypeId, Provide] = {
+            TypeId.from_type(Engin): Supply(self, type_hint=Engin)
+        }
         self._multiproviders: dict[TypeId, list[Provide]] = {}
         self._invocations: list[Invoke] = []
 
@@ -170,46 +172,6 @@ class Engin:
     async def _shutdown_when_stopped(self) -> None:
         await self._stop_requested_event.wait()
         await self._shutdown()
-
-    # def _destruct_options(self, options: Iterable[Option]) -> None:
-    #     for opt in options:
-    #         if isinstance(opt, Block):
-    #             self._destruct_options(opt)
-    #         if isinstance(opt, Provide | Supply):
-    #             if not opt.is_multiprovider:
-    #                 existing = self._providers.get(opt.return_type_id)
-    #                 self._log_option(opt, overwrites=existing)
-    #                 self._providers[opt.return_type_id] = opt
-    #             else:
-    #                 self._log_option(opt)
-    #                 if opt.return_type_id in self._multiproviders:
-    #                     self._multiproviders[opt.return_type_id].append(opt)
-    #                 else:
-    #                     self._multiproviders[opt.return_type_id] = [opt]
-    #         elif isinstance(opt, Invoke):
-    #             self._log_option(opt)
-    #             self._invocations.append(opt)
-
-    @staticmethod
-    def _log_option(opt: Dependency, overwrites: Dependency | None = None) -> None:
-        if overwrites is not None:
-            extra = f"\tOVERWRITES {overwrites.name}"
-            if overwrites.block_name:
-                extra += f" [{overwrites.block_name}]"
-        else:
-            extra = ""
-        if isinstance(opt, Supply):
-            LOG.debug(f"SUPPLY      {opt.return_type_id!s:<35}{extra}")
-        elif isinstance(opt, Provide):
-            LOG.debug(f"PROVIDE     {opt.return_type_id!s:<35} <- {opt.name}() {extra}")
-        elif isinstance(opt, Entrypoint):
-            type_id = opt.parameter_types[0]
-            LOG.debug(f"ENTRYPOINT  {type_id!s:<35}")
-        elif isinstance(opt, Invoke):
-            LOG.debug(f"INVOKE      {opt.name:<35}")
-
-    def _self(self) -> "Engin":
-        return self
 
 
 async def _wait_for_stop_signal(stop_requested_event: Event) -> None:

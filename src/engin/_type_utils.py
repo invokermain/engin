@@ -26,7 +26,7 @@ class TypeId:
         Returns:
             The corresponding TypeId for that type.
         """
-        if is_multi_type(type_):
+        if _is_multi_type(type_):
             inner_obj = typing.get_args(type_)[0]
             return TypeId(type=inner_obj, multi=True)
         else:
@@ -65,14 +65,7 @@ def _args_to_str(type_: Any) -> str:
     return arg_str
 
 
-def type_id_of(type_: Any) -> TypeId:
-    """
-    Generates a string TypeId for any type.
-    """
-    return TypeId.from_type(type_)
-
-
-def is_multi_type(type_: Any) -> bool:
+def _is_multi_type(type_: Any) -> bool:
     """
     Discriminates a type to determine whether it is the return type of a multiprovider.
     """

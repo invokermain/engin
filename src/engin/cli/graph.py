@@ -1,3 +1,4 @@
+import contextlib
 import importlib
 import logging
 import socketserver
@@ -103,10 +104,8 @@ def serve_graph(
     server_thread.daemon = True  # Daemonize the thread so it exits when the main script exits
     server_thread.start()
 
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         wait_for_interrupt()
-    except KeyboardInterrupt:
-        pass
 
     print("Exiting the server...")
 

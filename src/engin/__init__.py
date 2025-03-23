@@ -6,6 +6,7 @@ from engin._engin import Engin
 from engin._exceptions import ProviderError
 from engin._lifecycle import Lifecycle
 from engin._option import Option
+from engin._type_utils import TypeId
 
 __all__ = [
     "Assembler",
@@ -18,6 +19,7 @@ __all__ = [
     "Provide",
     "ProviderError",
     "Supply",
+    "TypeId",
     "ext",
     "invoke",
     "provide",

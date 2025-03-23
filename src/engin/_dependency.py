@@ -16,7 +16,7 @@ from typing import (
 )
 
 from engin._option import Option
-from engin._type_utils import TypeId, type_id_of
+from engin._type_utils import TypeId
 
 if TYPE_CHECKING:
     from engin._engin import Engin
@@ -89,7 +89,7 @@ class Dependency(ABC, Option, Generic[P, T]):
             return []
         if parameters[0].name == "self":
             parameters.pop(0)
-        return [type_id_of(param.annotation) for param in parameters]
+        return [TypeId.from_type(param.annotation) for param in parameters]
 
     @property
     def signature(self) -> Signature:
@@ -147,7 +147,7 @@ class Entrypoint(Invoke):
 
     @property
     def parameter_types(self) -> list[TypeId]:
-        return [type_id_of(self._type)]
+        return [TypeId.from_type(self._type)]
 
     @property
     def signature(self) -> Signature:
@@ -158,7 +158,7 @@ class Entrypoint(Invoke):
         )
 
     def __str__(self) -> str:
-        return f"Entrypoint({type_id_of(self._type)})"
+        return f"Entrypoint({TypeId.from_type(self._type)})"
 
 
 class Provide(Dependency[Any, T]):

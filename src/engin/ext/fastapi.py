@@ -9,7 +9,7 @@ from fastapi.routing import APIRoute
 from engin import Assembler, Engin, Entrypoint, Invoke, Option
 from engin._dependency import Dependency, Supply, _noop
 from engin._graph import DependencyGrapher, Node
-from engin._type_utils import TypeId, type_id_of
+from engin._type_utils import TypeId
 from engin.ext.asgi import ASGIEngin
 
 try:
@@ -168,7 +168,7 @@ class APIRouteDependency(Dependency):
         if parameters[0].name == "self":
             parameters.pop(0)
         return [
-            type_id_of(typing.get_args(param.annotation)[0])
+            TypeId.from_type(typing.get_args(param.annotation)[0])
             for param in parameters
             if self._is_injected_param(param)
         ]

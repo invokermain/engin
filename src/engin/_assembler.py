@@ -8,7 +8,7 @@ from typing import Any, Generic, TypeVar, cast
 
 from engin._dependency import Dependency, Provide, Supply
 from engin._exceptions import ProviderError
-from engin._type_utils import TypeId, type_id_of
+from engin._type_utils import TypeId
 
 LOG = logging.getLogger("engin")
 
@@ -106,7 +106,7 @@ class Assembler:
         Returns:
             The constructed value.
         """
-        type_id = type_id_of(type_)
+        type_id = TypeId.from_type(type_)
         if type_id in self._assembled_outputs:
             return cast("T", self._assembled_outputs[type_id])
         if type_id.multi:
@@ -152,7 +152,7 @@ class Assembler:
         Returns:
             True if the Assembler has a provider for type else False.
         """
-        type_id = type_id_of(type_)
+        type_id = TypeId.from_type(type_)
         if type_id.multi:
             return type_id in self._multiproviders
         else:
@@ -197,7 +197,9 @@ class Assembler:
                 # store default to prevent the warning appearing multiple times
                 self._multiproviders[type_id] = providers
             else:
-                raise LookupError(f"No Provider registered for dependency '{type_id}'")
+                available = sorted(str(k) for k in self._providers)
+                msg = f"Missing Provider for type '{type_id}', available: {available}"
+                raise LookupError(msg)
 
         required_providers: list[Provide[Any]] = []
         for provider in providers:
@@ -237,7 +239,7 @@ class Assembler:
             if param_name == "self":
                 args.append(object())
                 continue
-            param_key = type_id_of(param.annotation)
+            param_key = TypeId.from_type(param.annotation)
             has_dependency = param_key in self._assembled_outputs
             if not has_dependency:
                 await self._satisfy(param_key)
