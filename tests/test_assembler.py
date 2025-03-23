@@ -1,4 +1,3 @@
-from importlib.metadata import EntryPoint
 from typing import Annotated
 
 import pytest
