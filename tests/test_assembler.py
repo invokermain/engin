@@ -1,8 +1,9 @@
+from importlib.metadata import EntryPoint
 from typing import Annotated
 
 import pytest
 
-from engin import Assembler, Invoke, Provide
+from engin import Assembler, Entrypoint, Invoke, Provide
 from engin._exceptions import ProviderError
 from tests.deps import make_int, make_many_int, make_many_int_alt, make_str
 
@@ -73,15 +74,24 @@ async def test_assembler_with_unknown_type_raises_lookup_error():
     with pytest.raises(LookupError):
         await assembler.get(list[str])
 
+    with pytest.raises(LookupError):
+        await assembler.assemble(Entrypoint(str))
+
 
 async def test_assembler_with_erroring_provider_raises_provider_error():
     def make_str() -> str:
         raise RuntimeError("foo")
 
-    assembler = Assembler([Provide(make_str)])
+    def make_many_str() -> list[str]:
+        raise RuntimeError("foo")
+
+    assembler = Assembler([Provide(make_str), Provide(make_many_str)])
 
     with pytest.raises(ProviderError):
         await assembler.get(str)
+
+    with pytest.raises(ProviderError):
+        await assembler.get(list[str])
 
 
 async def test_annotations():
