@@ -1,7 +1,6 @@
 import inspect
 from collections.abc import Iterable
 from inspect import FrameInfo
-from itertools import islice
 
 
 def walk_stack() -> Iterable[FrameInfo]:

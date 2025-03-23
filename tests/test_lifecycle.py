@@ -78,5 +78,5 @@ async def test_lifecycle_hook_via_lifecycle(tracker):
 
 
 def test_lifecycle_hook_invalid():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="on_start"):
         Lifecycle().hook()
