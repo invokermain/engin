@@ -11,20 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `LifecycleHook` class to help build simple lifecycles with a start and stop call.
-- `TypeId` now attempts to introspect type aliases, this is experimental and currently on
-  used to enrich error messages.
 
 ### Changed
 
 - `engin-graph` has been replaced by `engin graph`.
-- Engin now uses `typer` for an improved cli experience.
-- The package now has an extra `cli` which must be installed to use the developer cli.
+- Engin now uses `typer` for an improved cli experience. Note the package now has an extra `cli` which must be installed to use the cli.
 - `Assembler.add(...)` does not error when adding already registered providers.
 - Use a more performant algorithm for inspecting frame stack.
 
 ### Fixed
 
 - `ASGIEngin` now properly surfaces startup errors.
+- `Engin.run()` doing a double shutdown.
 
 ## [0.0.13] - 2025-03-22
 
