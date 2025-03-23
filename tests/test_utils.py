@@ -6,64 +6,64 @@ from engin._type_utils import TypeId
 
 def test_type_id_of_int():
     type_id = TypeId.from_type(int)
-    assert type_id == TypeId(type=int, multi=False)
+    assert type_id == TypeId(type=int, multi=False, alias=None)
     assert str(type_id) == "int"
 
 
 def test_type_id_of_list_of_int():
     type_id = TypeId.from_type(list[int])
-    assert type_id == TypeId(type=int, multi=True)
+    assert type_id == TypeId(type=int, multi=True, alias=None)
     assert str(type_id) == "int[]"
 
 
 def test_type_id_of_alias():
     MyAlias: TypeAlias = int
 
+    type_id = TypeId.from_type(MyAlias)
+
     assert (
-        TypeId.from_type(MyAlias)
-        == TypeId(type=MyAlias, multi=False)
-        == TypeId(type=int, multi=False)
+        type_id
+        == TypeId(type=MyAlias, multi=False, alias="MyAlias")
+        == TypeId(type=int, multi=False, alias=None)
     )
+    assert str(type_id) == "Alias[MyAlias, int]"
 
 
 def test_type_id_of_type_of_class():
     class Foo: ...
 
     type_id = TypeId.from_type(type[Foo])
-    assert type_id == TypeId(type=type[Foo], multi=False)
+    assert type_id == TypeId(type=type[Foo], multi=False, alias=None)
     assert str(type_id) == "type[Foo]"
 
 
 def test_type_id_of_callable():
-    func = Callable[[int], str]
-    type_id = TypeId.from_type(func)
-    assert type_id == TypeId(type=Callable[[int], str], multi=False)
+    type_id = TypeId.from_type(Callable[[int], str])
+    assert type_id == TypeId(type=Callable[[int], str], multi=False, alias=None)
     assert str(type_id) == "Callable[[int], str]"
 
 
 def test_type_id_of_multi_callable():
-    many_func = list[Callable[[int], str]]
-    type_id = TypeId.from_type(many_func)
-    assert type_id == TypeId(type=Callable[[int], str], multi=True)
+    type_id = TypeId.from_type(list[Callable[[int], str]])
+    assert type_id == TypeId(type=Callable[[int], str], multi=True, alias=None)
     assert str(type_id) == "Callable[[int], str][]"
 
 
 def test_type_id_of_annotation():
-    annotated = Annotated[int, "Activity"]
-    type_id = TypeId.from_type(annotated)
-    assert type_id == TypeId(type=Annotated[int, "Activity"], multi=False)
+    type_id = TypeId.from_type(Annotated[int, "Activity"])
+    assert type_id == TypeId(type=Annotated[int, "Activity"], multi=False, alias=None)
     assert str(type_id) == "Annotated[int, Activity]"
 
 
 def test_type_id_of_complex_annotation():
-    annotated = Annotated[Callable[[int], str], "Activity"]
-    type_id = TypeId.from_type(annotated)
-    assert type_id == TypeId(type=Annotated[Callable[[int], str], "Activity"], multi=False)
+    type_id = TypeId.from_type(Annotated[Callable[[int], str], "Activity"])
+    assert type_id == TypeId(
+        type=Annotated[Callable[[int], str], "Activity"], multi=False, alias=None
+    )
     assert str(type_id) == "Annotated[Callable[[int], str], Activity]"
 
 
 def test_type_id_of_union():
-    union = int | str
-    type_id = TypeId.from_type(union)
-    assert type_id == TypeId(type=int | str, multi=False)
+    type_id = TypeId.from_type(int | str)
+    assert type_id == TypeId(type=int | str, multi=False, alias=None)
     assert str(type_id) == "Union[int, str]"
