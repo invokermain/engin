@@ -110,7 +110,6 @@ class Engin:
         await self.start()
         self._run_task = asyncio.create_task(_wait_for_stop_signal(self._stop_requested_event))
         await self._stop_requested_event.wait()
-        await self._shutdown()
 
     async def start(self) -> None:
         """
