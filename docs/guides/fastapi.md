@@ -159,7 +159,7 @@ app = FastAPIEngin(AppBlock())
 
 ## Graphing Dependencies
 
-Engin provides dependency visualisation functionality via the `engin-graph` script. When
+Engin provides dependency visualisation functionality via the `engin graph` script. When
 working with a FastAPI application this can be used to visualise API Routes along with
 their respective dependencies.
 

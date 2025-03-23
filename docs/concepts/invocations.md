@@ -23,15 +23,12 @@ imports for brevity):
 
 ```python
 def worker_factory(lifecycle: Lifecycle) -> Worker:
-   worker = Worker()
+    worker = Worker()
    
-   @asynccontextmanager
-   async def worker_lifecycle() -> Iterable[None]:
-       worker.start()
-       yield
-       worker.shutdown()
-       
-    lifecycle.append(worker_lifecycle)
+    lifecycle.hook(
+        on_start=worker.start,
+        on_stop=worker.shutdown
+    )
    
     return worker
 ```
