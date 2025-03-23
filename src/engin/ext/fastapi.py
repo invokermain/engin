@@ -9,7 +9,7 @@ from fastapi.routing import APIRoute
 from engin import Assembler, Engin, Entrypoint, Invoke, Option
 from engin._dependency import Dependency, Supply, _noop
 from engin._graph import DependencyGrapher, Node
-from engin._type_utils import TypeId, type_id_of
+from engin._type_utils import TypeId
 from engin.ext.asgi import ASGIEngin
 
 try:
@@ -33,7 +33,10 @@ def _attach_assembler(app: FastAPI, engin: Engin) -> None:
 
 
 class FastAPIEngin(ASGIEngin):
-    _LIB_OPTIONS: ClassVar[list[Option]] = [*ASGIEngin._LIB_OPTIONS, Invoke(_attach_assembler)]
+    _LIB_OPTIONS: ClassVar[list[Option]] = [
+        *ASGIEngin._LIB_OPTIONS,
+        Invoke(_attach_assembler),
+    ]
     _asgi_type = FastAPI
 
     def graph(self) -> list[Node]:
@@ -165,7 +168,7 @@ class APIRouteDependency(Dependency):
         if parameters[0].name == "self":
             parameters.pop(0)
         return [
-            type_id_of(typing.get_args(param.annotation)[0])
+            TypeId.from_type(typing.get_args(param.annotation)[0])
             for param in parameters
             if self._is_injected_param(param)
         ]
@@ -183,3 +186,6 @@ class APIRouteDependency(Dependency):
     def name(self) -> str:
         methods = ",".join(self._route.methods)
         return f"{methods} {self._route.path}"
+
+    def apply(self, engin: Engin) -> None:
+        raise NotImplementedError("APIRouteDependency is not a real dependency")

@@ -6,7 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.0.13] - 2025-03-12
+## [0.0.14] - 2025-03-23
+
+### Added
+
+- `LifecycleHook` class to help build simple lifecycles with a start and stop call.
+- `TypeId` now attempts to introspect type aliases, this is experimental and currently on
+  used to enrich error messages.
+
+### Changed
+
+- `engin-graph` has been replaced by `engin graph`.
+- Engin now uses `typer` for an improved cli experience.
+- The package now has an extra `cli` which must be installed to use the developer cli.
+- `Assembler.add(...)` does not error when adding already registered providers.
+- Use a more performant algorithm for inspecting frame stack.
+
+### Fixed
+
+- `ASGIEngin` now properly surfaces startup errors.
+
+## [0.0.13] - 2025-03-22
 
 ### Changed
 

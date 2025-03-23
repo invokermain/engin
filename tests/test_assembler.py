@@ -2,7 +2,7 @@ from typing import Annotated
 
 import pytest
 
-from engin import Assembler, Invoke, Provide
+from engin import Assembler, Entrypoint, Invoke, Provide
 from engin._exceptions import ProviderError
 from tests.deps import make_int, make_many_int, make_many_int_alt, make_str
 
@@ -52,21 +52,45 @@ async def test_assembler_providers_only_called_once():
     await assembled_dependency()
 
 
+def test_assembler_with_duplicate_provider_errors():
+    with pytest.raises(RuntimeError):
+        Assembler([Provide(make_int), Provide(make_int)])
+
+
+async def test_assembler_get():
+    assembler = Assembler([Provide(make_int), Provide(make_many_int)])
+
+    assert await assembler.get(int)
+    assert await assembler.get(list[int])
+
+
 async def test_assembler_with_unknown_type_raises_lookup_error():
     assembler = Assembler([])
 
     with pytest.raises(LookupError):
         await assembler.get(str)
 
+    with pytest.raises(LookupError):
+        await assembler.get(list[str])
 
-async def test_assembler_with_unknown_type_raises_assembly_error():
+    with pytest.raises(LookupError):
+        await assembler.assemble(Entrypoint(str))
+
+
+async def test_assembler_with_erroring_provider_raises_provider_error():
     def make_str() -> str:
         raise RuntimeError("foo")
 
-    assembler = Assembler([Provide(make_str)])
+    def make_many_str() -> list[str]:
+        raise RuntimeError("foo")
+
+    assembler = Assembler([Provide(make_str), Provide(make_many_str)])
 
     with pytest.raises(ProviderError):
         await assembler.get(str)
+
+    with pytest.raises(ProviderError):
+        await assembler.get(list[str])
 
 
 async def test_annotations():
@@ -115,8 +139,22 @@ async def test_assembler_add():
     assert assembler.has(int)
     assert assembler.has(list[int])
 
-    with pytest.raises(ValueError, match="exists"):
-        assembler.add(Provide(make_int))
-
     # can always add more multiproviders
     assembler.add(Provide(make_many_int))
+
+
+async def test_assembler_add_overrides():
+    def return_one() -> int:
+        return 1
+
+    def return_two() -> int:
+        return 2
+
+    assembler = Assembler([])
+    assembler.add(Provide(return_one))
+
+    assert await assembler.get(int) == 1
+
+    assembler.add(Provide(return_two))
+
+    assert await assembler.get(int) == 2

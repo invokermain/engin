@@ -3,8 +3,8 @@ import typing
 from abc import ABC
 from collections.abc import Awaitable, Callable
 from inspect import Parameter, Signature, isclass, iscoroutinefunction
-from types import FrameType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Generic,
     ParamSpec,
@@ -14,7 +14,12 @@ from typing import (
     get_type_hints,
 )
 
-from engin._type_utils import TypeId, type_id_of
+from engin._introspect import get_first_external_frame
+from engin._option import Option
+from engin._type_utils import TypeId
+
+if TYPE_CHECKING:
+    from engin._engin import Engin
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -24,23 +29,16 @@ Func: TypeAlias = Callable[P, T]
 def _noop(*args: Any, **kwargs: Any) -> None: ...
 
 
-def _walk_stack() -> FrameType:
-    stack = inspect.stack()[1]
-    frame = stack.frame
-    while True:
-        if frame.f_globals["__package__"] != "engin" or frame.f_back is None:
-            return frame
-        else:
-            frame = frame.f_back
-
-
-class Dependency(ABC, Generic[P, T]):
+class Dependency(ABC, Option, Generic[P, T]):
     def __init__(self, func: Func[P, T], block_name: str | None = None) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
         self._signature = inspect.signature(self._func)
         self._block_name = block_name
-        self._source_frame = _walk_stack()
+
+        source_frame = get_first_external_frame()
+        self._source_package = cast("str", source_frame.frame.f_globals["__package__"])
+        self._source_frame = cast("str", source_frame.frame.f_globals["__name__"])
 
     @property
     def source_module(self) -> str:
@@ -50,7 +48,7 @@ class Dependency(ABC, Generic[P, T]):
         Returns:
             A string, e.g. "examples.fastapi.app"
         """
-        return self._source_frame.f_globals["__name__"]  # type: ignore[no-any-return]
+        return self._source_frame
 
     @property
     def source_package(self) -> str:
@@ -60,7 +58,7 @@ class Dependency(ABC, Generic[P, T]):
         Returns:
             A string, e.g. "engin"
         """
-        return self._source_frame.f_globals["__package__"]  # type: ignore[no-any-return]
+        return self._source_package
 
     @property
     def block_name(self) -> str | None:
@@ -84,7 +82,7 @@ class Dependency(ABC, Generic[P, T]):
             return []
         if parameters[0].name == "self":
             parameters.pop(0)
-        return [type_id_of(param.annotation) for param in parameters]
+        return [TypeId.from_type(param.annotation) for param in parameters]
 
     @property
     def signature(self) -> Signature:
@@ -95,7 +93,7 @@ class Dependency(ABC, Generic[P, T]):
 
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         if self._is_async:
-            return await cast(Awaitable[T], self._func(*args, **kwargs))
+            return await cast("Awaitable[T]", self._func(*args, **kwargs))
         else:
             return self._func(*args, **kwargs)
 
@@ -122,6 +120,9 @@ class Invoke(Dependency):
     def __init__(self, invocation: Func[P, T], block_name: str | None = None) -> None:
         super().__init__(func=invocation, block_name=block_name)
 
+    def apply(self, engin: "Engin") -> None:
+        engin._invocations.append(self)
+
     def __str__(self) -> str:
         return f"Invoke({self.name})"
 
@@ -139,7 +140,7 @@ class Entrypoint(Invoke):
 
     @property
     def parameter_types(self) -> list[TypeId]:
-        return [type_id_of(self._type)]
+        return [TypeId.from_type(self._type)]
 
     @property
     def signature(self) -> Signature:
@@ -150,7 +151,7 @@ class Entrypoint(Invoke):
         )
 
     def __str__(self) -> str:
-        return f"Entrypoint({type_id_of(self._type)})"
+        return f"Entrypoint({TypeId.from_type(self._type)})"
 
 
 class Provide(Dependency[Any, T]):
@@ -190,11 +191,20 @@ class Provide(Dependency[Any, T]):
 
     @property
     def return_type_id(self) -> TypeId:
-        return type_id_of(self.return_type)
+        return TypeId.from_type(self.return_type)
 
     @property
     def is_multiprovider(self) -> bool:
         return self._is_multi
+
+    def apply(self, engin: "Engin") -> None:
+        if self.is_multiprovider:
+            if self.return_type_id in engin._multiproviders:
+                engin._multiproviders[self.return_type_id].append(self)
+            else:
+                engin._multiproviders[self.return_type_id] = [self]
+        else:
+            engin._providers[self.return_type_id] = self
 
     def __hash__(self) -> int:
         return hash(self.return_type_id)
