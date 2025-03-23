@@ -33,7 +33,3 @@ def get_first_external_frame() -> FrameInfo:
         if frame.f_globals["__package__"] != "engin" or frame.f_back is None:
             return frame_info
     raise RuntimeError("Unable to find external frame")
-
-
-def get_stack(max_depth: int) -> list[FrameInfo]:
-    return list(islice(walk_stack(), max_depth))
