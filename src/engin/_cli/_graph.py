@@ -15,7 +15,11 @@ from engin import Engin, Entrypoint, Invoke
 from engin._cli._utils import print_error
 from engin._dependency import Dependency, Provide, Supply
 from engin.ext.asgi import ASGIEngin
-from engin.ext.fastapi import APIRouteDependency
+
+try:
+    from engin.ext.fastapi import APIRouteDependency
+except ImportError:
+    APIRouteDependency = None  # type: ignore[assignment,misc]
 
 cli = typer.Typer()
 
