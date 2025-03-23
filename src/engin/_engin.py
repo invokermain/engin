@@ -3,6 +3,7 @@ import logging
 import os
 import signal
 from asyncio import Event, Task
+from collections import defaultdict
 from contextlib import AsyncExitStack
 from itertools import chain
 from types import FrameType
@@ -85,7 +86,7 @@ class Engin:
         self._providers: dict[TypeId, Provide] = {
             TypeId.from_type(Engin): Supply(self, type_hint=Engin)
         }
-        self._multiproviders: dict[TypeId, list[Provide]] = {}
+        self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
         self._invocations: list[Invoke] = []
 
         # populates the above

@@ -172,12 +172,9 @@ class Assembler:
         """
         type_id = provider.return_type_id
         if provider.is_multiprovider:
-            if type_id in self._multiproviders:
-                if type_id in self._assembled_outputs:
-                    del self._assembled_outputs[type_id]
-                self._multiproviders[type_id].append(provider)
-            else:
-                self._multiproviders[type_id] = [provider]
+            if type_id in self._assembled_outputs:
+                del self._assembled_outputs[type_id]
+            self._multiproviders[type_id].append(provider)
         else:
             if type_id in self._assembled_outputs:
                 del self._assembled_outputs[type_id]

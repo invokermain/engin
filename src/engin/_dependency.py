@@ -199,10 +199,7 @@ class Provide(Dependency[Any, T]):
 
     def apply(self, engin: "Engin") -> None:
         if self.is_multiprovider:
-            if self.return_type_id in engin._multiproviders:
-                engin._multiproviders[self.return_type_id].append(self)
-            else:
-                engin._multiproviders[self.return_type_id] = [self]
+            engin._multiproviders[self.return_type_id].append(self)
         else:
             engin._providers[self.return_type_id] = self
 
