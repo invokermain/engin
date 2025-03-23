@@ -12,8 +12,8 @@ import typer
 from rich import print
 
 from engin import Engin, Entrypoint, Invoke
+from engin._cli._utils import print_error
 from engin._dependency import Dependency, Provide, Supply
-from engin.cli._utils import print_error
 from engin.ext.asgi import ASGIEngin
 from engin.ext.fastapi import APIRouteDependency
 
@@ -50,14 +50,15 @@ def serve_graph(
     try:
         module_name, engin_name = app.split(":", maxsplit=1)
     except ValueError:
-        raise ValueError(
-            "Expected an argument of the form 'module:attribute', e.g. 'myapp:engin'"
-        ) from None
+        print_error("Expected an argument of the form 'module:attribute', e.g. 'myapp:engin'")
 
     global _APP_ORIGIN
     _APP_ORIGIN = module_name.split(".", maxsplit=1)[0]
 
-    module = importlib.import_module(module_name)
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError:
+        print_error(f"unable to find module '{module_name}'")
 
     try:
         instance = getattr(module, engin_name)

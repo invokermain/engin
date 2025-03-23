@@ -6,7 +6,7 @@ except ImportError:
         " `cli` extra, e.g. pip install engin[cli]"
     ) from None
 
-from engin.cli.graph import cli as graph_cli
+from engin._cli._graph import cli as graph_cli
 
 app = typer.Typer()
 

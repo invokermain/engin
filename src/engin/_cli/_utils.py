@@ -15,4 +15,4 @@ def print_error(msg: str) -> Never:
             highlight=True,
         )
     )
-    raise typer.Exit()
+    raise typer.Exit(code=1)
