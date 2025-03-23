@@ -104,9 +104,15 @@ def serve_graph(
     server_thread.start()
 
     try:
-        sleep(10000)
+        wait_for_interrupt()
     except KeyboardInterrupt:
-        print("Exiting the server...")
+        pass
+
+    print("Exiting the server...")
+
+
+def wait_for_interrupt() -> None:
+    sleep(10000)
 
 
 _BLOCK_IDX: dict[str, int] = {}
