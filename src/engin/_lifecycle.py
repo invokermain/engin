@@ -9,6 +9,7 @@ from typing import TypeAlias, TypeGuard, cast
 LOG = logging.getLogger("engin")
 
 _AnyContextManager: TypeAlias = AbstractAsyncContextManager | AbstractContextManager
+_ParameterlessCallable: TypeAlias = Callable[[], None | Awaitable[None]]
 
 
 class Lifecycle:
@@ -53,10 +54,10 @@ class Lifecycle:
         def my_provider(lifecycle: Lifecycle) -> str:
             connection_pool = ConnectionPool()
 
-            lifecycle.append(LifecycleHook(
+            lifecycle.hook(
                 on_start=connection_pool.connect,
                 on_stop=connection_pool.close,
-            ))
+            )
         ```
     """
 
@@ -73,6 +74,25 @@ class Lifecycle:
         suppressed_cm = _AExitSuppressingAsyncContextManager(cm)
         self._context_managers.append(suppressed_cm)
 
+    def hook(
+        self,
+        *,
+        on_start: _ParameterlessCallable | None = None,
+        on_stop: _ParameterlessCallable | None = None,
+    ) -> None:
+        """
+        Append a hook to the Lifecycle.
+
+        At least one of `on_start` or `on_stop` must be provided.
+
+        Args:
+            on_start: a callable to be executed on Lifecycle startup.
+            on_stop: a callable to be executed on Lifecycle shutdown.
+        """
+        if on_start is None and on_stop is None:
+            raise ValueError("At least one of on_start or on_stop must be provided")
+        self.append(LifecycleHook(on_start=on_start, on_stop=on_stop))
+
     def list(self) -> list[AbstractAsyncContextManager]:
         """
         List all the defined tasks.
@@ -86,8 +106,8 @@ class Lifecycle:
 class LifecycleHook(AbstractAsyncContextManager):
     def __init__(
         self,
-        on_start: Callable[[], None | Awaitable[None]] | None = None,
-        on_stop: Callable[[], None | Awaitable[None]] | None = None,
+        on_start: _ParameterlessCallable | None = None,
+        on_stop: _ParameterlessCallable | None = None,
     ) -> None:
         self._on_start = on_start
         self._on_stop = on_stop

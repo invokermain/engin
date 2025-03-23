@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from engin._lifecycle import LifecycleHook
+from engin._lifecycle import Lifecycle, LifecycleHook
 
 
 @dataclass
@@ -36,6 +36,22 @@ async def test_lifecycle_hook(tracker):
     assert tracker.state == 0
 
     async with hook:
+        assert tracker.state == 1
+
+    assert tracker.state == 2
+
+
+@pytest.mark.parametrize("tracker", [(Tracker(), AsyncTracker())])
+async def test_lifecycle_hook_via_lifecycle(tracker):
+    lifecycle = Lifecycle()
+    tracker = Tracker()
+
+    lifecycle.hook(on_start=tracker.start, on_stop=tracker.stop)
+    cm = lifecycle.list()[0]
+
+    assert tracker.state == 0
+
+    async with cm:
         assert tracker.state == 1
 
     assert tracker.state == 2
