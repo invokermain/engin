@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+import pytest
+
 from engin._lifecycle import LifecycleHook
 
 
@@ -14,7 +16,19 @@ class Tracker:
         self.state = 2
 
 
-async def test_lifecycle_hook():
+@dataclass
+class AsyncTracker:
+    state: int = 0
+
+    async def start(self) -> None:
+        self.state = 1
+
+    async def stop(self) -> None:
+        self.state = 2
+
+
+@pytest.mark.parametrize("tracker", (Tracker(), AsyncTracker()))
+async def test_lifecycle_hook(tracker):
     tracker = Tracker()
 
     hook = LifecycleHook(on_start=tracker.start, on_stop=tracker.stop)
