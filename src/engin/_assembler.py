@@ -55,7 +55,6 @@ class Assembler:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._assembled_outputs: dict[TypeId, Any] = {}
-        self._consumed_providers: set[Provide[Any]] = set()
         self._lock = asyncio.Lock()
 
         for provider in providers:
@@ -180,8 +179,7 @@ class Assembler:
             else:
                 self._multiproviders[type_id] = [provider]
         else:
-            if provider in self._consumed_providers:
-                self._consumed_providers.remove(provider)
+            if type_id in self._assembled_outputs:
                 del self._assembled_outputs[type_id]
             self._providers[type_id] = provider
 
@@ -213,9 +211,11 @@ class Assembler:
 
     async def _satisfy(self, target: TypeId) -> None:
         for provider in self._resolve_providers(target):
-            if provider in self._consumed_providers:
+            if (
+                not provider.is_multiprovider
+                and provider.return_type_id in self._assembled_outputs
+            ):
                 continue
-            self._consumed_providers.add(provider)
             type_id = provider.return_type_id
             bound_args = await self._bind_arguments(provider.signature)
             try:

@@ -52,14 +52,29 @@ async def test_assembler_providers_only_called_once():
     await assembled_dependency()
 
 
+def test_assembler_with_duplicate_provider_errors():
+    with pytest.raises(RuntimeError):
+        Assembler([Provide(make_int), Provide(make_int)])
+
+
+async def test_assembler_get():
+    assembler = Assembler([Provide(make_int), Provide(make_many_int)])
+
+    assert await assembler.get(int)
+    assert await assembler.get(list[int])
+
+
 async def test_assembler_with_unknown_type_raises_lookup_error():
     assembler = Assembler([])
 
     with pytest.raises(LookupError):
         await assembler.get(str)
 
+    with pytest.raises(LookupError):
+        await assembler.get(list[str])
 
-async def test_assembler_with_unknown_type_raises_assembly_error():
+
+async def test_assembler_with_erroring_provider_raises_provider_error():
     def make_str() -> str:
         raise RuntimeError("foo")
 
@@ -117,3 +132,20 @@ async def test_assembler_add():
 
     # can always add more multiproviders
     assembler.add(Provide(make_many_int))
+
+
+async def test_assembler_add_overrides():
+    def return_one() -> int:
+        return 1
+
+    def return_two() -> int:
+        return 2
+
+    assembler = Assembler([])
+    assembler.add(Provide(return_one))
+
+    assert await assembler.get(int) == 1
+
+    assembler.add(Provide(return_two))
+
+    assert await assembler.get(int) == 2
