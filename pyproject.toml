@@ -12,7 +12,7 @@ dependencies = []
 cli = ["typer>=0.15"]
 
 [project.scripts]
-engin = "engin.cli:app"
+engin = "engin._cli:app"
 
 [project.urls]
 Homepage = "https://github.com/invokermain/engin"
