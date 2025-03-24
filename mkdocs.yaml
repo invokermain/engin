@@ -34,7 +34,6 @@ nav:
       - Invocations: "concepts/invocations.md"
       - Lifecycle: "concepts/lifecycle.md"
   - Guides:
-      - Dependency Injection: "guides/dependency_injection.md"
       - FastAPI: "guides/fastapi.md"
   - Reference: "reference.md"
 
