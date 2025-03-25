@@ -17,17 +17,19 @@ class: `Provide`.
 ```python
 from engin import Engin, Provide
 
+
 # define our constructor
 def string_factory() -> str:
-   return "hello"
+    return "hello"
+
 
 # register it as a provider with the Engin
 engin = Engin(Provide(string_factory))
 
 # construct the string
-a_string = await engin.assembler.get(str)
+a_string = await engin.assembler.build(str)
 
-print(a_string) # hello
+print(a_string)  # hello
 ```
 
 Providers can be asynchronous as well, this factory function would work exactly the same
@@ -45,27 +47,31 @@ Providers that construct more interesting objects generally require their own pa
 ```python
 from engin import Engin, Provide
 
+
 class Greeter:
     def __init__(self, greeting: str) -> None:
         self._greeting = greeting
-        
+
     def greet(self, name: str) -> None:
         print(f"{self._greeting}, {name}!")
-        
+
+
 # define our constructors
 def string_factory() -> str:
-   return "hello"
+    return "hello"
+
 
 def greeter_factory(greeting: str) -> Greeter:
     return Greeter(greeting=greeting)
+
 
 # register them as providers with the Engin
 engin = Engin(Provide(string_factory), Provide(greeter_factory))
 
 # construct the Greeter
-greeter = await engin.assembler.get(Greeter)
+greeter = await engin.assembler.build(Greeter)
 
-greeter.greet("Bob") # hello, Bob!
+greeter.greet("Bob")  # hello, Bob!
 ```
 
 
@@ -81,19 +87,21 @@ from engin import Engin, Provide
 
 # define our constructors
 def string_factory() -> str:
-   return "hello"
+    return "hello"
+
 
 def evil_factory() -> int:
     raise RuntimeError("I have ruined your plans")
+
 
 # register them as providers with the Engin
 engin = Engin(Provide(string_factory), Provide(evil_factory))
 
 # this will not raise an error
-await engin.assembler.get(str)
+await engin.assembler.build(str)
 
 # this will raise an error
-await engin.assembler.get(int)
+await engin.assembler.build(int)
 ```
 
 
@@ -109,20 +117,23 @@ To turn a factory into a multiprovider, simply return a list:
 ```python
 from engin import Engin, Provide
 
+
 # define our constructors
 def animal_names_factory() -> list[str]:
-   return ["cat", "dog"]
+    return ["cat", "dog"]
+
 
 def other_animal_names_factory() -> list[str]:
-   return ["horse", "cow"]
+    return ["horse", "cow"]
+
 
 # register them as providers with the Engin
 engin = Engin(Provide(animal_names_factory), Provide(other_animal_names_factory))
 
 # construct the list of strings
-animal_names = await engin.assembler.get(list[str])
+animal_names = await engin.assembler.build(list[str])
 
-print(animal_names) # ["cat", "dog", "horse", "cow"]
+print(animal_names)  # ["cat", "dog", "horse", "cow"]
 ```
 
 
@@ -133,25 +144,28 @@ Providers of the same type can be discriminated using annotations.
 ```python
 from engin import Engin, Provide
 from typing import Annotated
-        
+
+
 # define our constructors
 def greeting_factory() -> Annotated[str, "greeting"]:
-   return "hello"
+    return "hello"
+
 
 def name_factory() -> Annotated[str, "name"]:
     return "Jelena"
+
 
 # register them as providers with the Engin
 engin = Engin(Provide(greeting_factory), Provide(name_factory))
 
 # this will return "hello"
-await engin.assembler.get(Annotated[str, "greeting"])
+await engin.assembler.build(Annotated[str, "greeting"])
 
 # this will return "Jelena"
-await engin.assembler.get(Annotated[str, "name"])
+await engin.assembler.build(Annotated[str, "name"])
 
 # N.B. this will raise an error!
-await engin.assembler.get(str)
+await engin.assembler.build(str)
 ```
 
 
@@ -162,7 +176,6 @@ provided type is automatically inferred.
 
 For example the first example on this page could be rewritten as:
 
-
 ```python
 from engin import Engin, Supply
 
@@ -170,7 +183,7 @@ from engin import Engin, Supply
 engin = Engin(Supply("hello"))
 
 # construct the string
-a_string = await engin.assembler.get(str)
+a_string = await engin.assembler.build(str)
 
-print(a_string) # hello
+print(a_string)  # hello
 ```

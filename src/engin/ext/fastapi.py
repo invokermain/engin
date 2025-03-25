@@ -58,7 +58,7 @@ def Inject(interface: type[T]) -> Depends:
             assembler: Assembler = conn.app.state.assembler
         except AttributeError:
             raise RuntimeError("Assembler is not attached to Application state") from None
-        return await assembler.get(interface)
+        return await assembler.build(interface)
 
     dep = Depends(inner)
     dep.__engin__ = True  # type: ignore[attr-defined]
@@ -143,7 +143,8 @@ class APIRouteDependency(Dependency):
         """
         Warning: this should never be constructed in application code.
         """
-        super().__init__(_noop, wraps.block_name)
+        super().__init__(_noop)
+        self._block_name = wraps.block_name
         self._wrapped = wraps
         self._route = route
         self._signature = inspect.signature(route.endpoint)
