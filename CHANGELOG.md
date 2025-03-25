@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   overrides by specifying the `override` parameter when defining the provider
   `Provide(..., override=True)` or `@provide(override=True)`.
 - Lifecycle startup tasks will now timeout after 15 seconds and raise an error.
-- Assembler's `get` method has been renamed to `build` as it is more accurate.
+- Assembler's `get` method has been renamed to `build`.
+- Supply's `type_hint` parameter has been renamed to `as_type`.
 
 ### Fixed
 
