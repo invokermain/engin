@@ -1,5 +1,5 @@
 import inspect
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from itertools import chain
 from typing import TYPE_CHECKING, ClassVar
 
@@ -10,20 +10,36 @@ if TYPE_CHECKING:
     from engin._engin import Engin
 
 
-def provide(func: Func) -> Func:
+def provide(
+    func_: Func | None = None, *, override: bool = False
+) -> Func | Callable[[Func], Func]:
     """
     A decorator for defining a Provider in a Block.
     """
-    func._opt = Provide(func)  # type: ignore[attr-defined]
-    return func
+
+    def _inner(func: Func) -> Func:
+        func._opt = Provide(func, override=override)  # type: ignore[attr-defined]
+        return func
+
+    if func_ is None:
+        return _inner
+    else:
+        return _inner(func_)
 
 
-def invoke(func: Func) -> Func:
+def invoke(func_: Func | None = None) -> Func | Callable[[Func], Func]:
     """
     A decorator for defining an Invocation in a Block.
     """
-    func._opt = Invoke(func)  # type: ignore[attr-defined]
-    return func
+
+    def _inner(func: Func) -> Func:
+        func._opt = Invoke(func)  # type: ignore[attr-defined]
+        return func
+
+    if func_ is None:
+        return _inner
+    else:
+        return _inner(func_)
 
 
 class Block(Option):

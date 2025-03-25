@@ -1,4 +1,5 @@
 from typing import Annotated
+from unittest.mock import Mock
 
 import pytest
 
@@ -91,3 +92,40 @@ def test_provider_cannot_depend_on_self():
 
     with pytest.raises(ValueError, match="return type"):
         Provide(invalid_provider_2)
+
+
+def test_provides_implicit_overrides():
+    provide_a = Provide(make_int)
+    provide_b = Provide(make_int)
+
+    engin = Mock()
+    engin._providers = {}
+
+    provide_a.apply(engin)
+
+    with pytest.raises(RuntimeError, match="implicit"):
+        provide_b.apply(engin)
+
+
+def test_provides_explicit_overrides_allowed():
+    provide_a = Provide(make_int)
+    provide_b = Provide(make_int, override=True)
+
+    engin = Mock()
+    engin._providers = {}
+
+    provide_a.apply(engin)
+    provide_b.apply(engin)
+
+
+def test_provides_implicit_overrides_allowed_when_3rd_party():
+    provide_a = Provide(make_int)
+    provide_b = Provide(make_int)
+
+    provide_a._source_package = "foo"
+
+    engin = Mock()
+    engin._providers = {}
+
+    provide_a.apply(engin)
+    provide_b.apply(engin)

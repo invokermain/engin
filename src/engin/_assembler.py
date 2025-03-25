@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections import defaultdict
-from collections.abc import Collection, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
 from typing import Any, Generic, TypeVar, cast
@@ -39,7 +39,7 @@ class Assembler:
     A container for Providers that is responsible for building provided types.
 
     The Assembler acts as a cache for previously built types, meaning repeat calls
-    to `get` will produce the same value.
+    to `build` will produce the same value.
 
     Examples:
         ```python
@@ -47,7 +47,7 @@ class Assembler:
             return "foo"
 
         a = Assembler([Provide(build_str)])
-        await a.get(str)
+        await a.build(str)
         ```
     """
 
@@ -85,17 +85,15 @@ class Assembler:
                 bound_args=await self._bind_arguments(dependency.signature),
             )
 
-    async def get(self, type_: type[T]) -> T:
+    async def build(self, type_: type[T]) -> T:
         """
-        Return the constructed value for the given type.
+        Build the type from Assembler's factories.
 
-        This method assembles the required Providers and constructs their corresponding
-        values.
-
-        If the
+        If the type has been built previously the value will be cached and will return the
+        same instance.
 
         Args:
-            type_: the type of the desired value.
+            type_: the type of the desired value to build.
 
         Raises:
             LookupError: When no provider is found for the given type.
@@ -180,31 +178,37 @@ class Assembler:
                 del self._assembled_outputs[type_id]
             self._providers[type_id] = provider
 
-    def _resolve_providers(self, type_id: TypeId) -> Collection[Provide]:
+    def _resolve_providers(self, type_id: TypeId) -> Iterable[Provide]:
+        """
+        Resolves the chain of providers required to satisfy the provider of a given type.
+        Ordering of the return value is very important!
+
+        # TODO: performance optimisation, do not recurse for already satisfied providers?
+        """
         if type_id.multi:
-            providers = self._multiproviders.get(type_id)
+            root_providers = self._multiproviders.get(type_id)
         else:
-            providers = [provider] if (provider := self._providers.get(type_id)) else None
-        if not providers:
+            root_providers = [provider] if (provider := self._providers.get(type_id)) else None
+
+        if not root_providers:
             if type_id.multi:
                 LOG.warning(f"no provider for '{type_id}' defaulting to empty list")
-                providers = [(Supply([], type_hint=list[type_id.type]))]  # type: ignore[name-defined]
+                root_providers = [(Supply([], as_type=list[type_id.type]))]  # type: ignore[name-defined]
                 # store default to prevent the warning appearing multiple times
-                self._multiproviders[type_id] = providers
+                self._multiproviders[type_id] = root_providers
             else:
                 available = sorted(str(k) for k in self._providers)
                 msg = f"Missing Provider for type '{type_id}', available: {available}"
                 raise LookupError(msg)
 
-        required_providers: list[Provide[Any]] = []
-        for provider in providers:
-            required_providers.extend(
-                provider
-                for provider_param in provider.parameter_types
-                for provider in self._resolve_providers(provider_param)
-            )
-
-        return {*required_providers, *providers}
+        # providers that must be satisfied to satisfy the root level providers
+        yield from (
+            child_provider
+            for root_provider in root_providers
+            for root_provider_param in root_provider.parameter_types
+            for child_provider in self._resolve_providers(root_provider_param)
+        )
+        yield from root_providers
 
     async def _satisfy(self, target: TypeId) -> None:
         for provider in self._resolve_providers(target):

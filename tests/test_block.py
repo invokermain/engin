@@ -8,12 +8,18 @@ def test_block():
             return 3
 
         @invoke
-        def invoke_square(self, some: int) -> None:
-            return some**2
+        def invoke_square(self, some: int) -> None: ...
+
+        @provide()
+        def provide_str(self) -> str:
+            return "3"
+
+        @invoke()
+        def invoke_str(self, some: str) -> None: ...
 
     my_block = MyBlock()
 
     options = list(my_block._method_options())
-    assert len(options) == 2
 
+    assert len(options) == 4
     assert Engin(my_block)

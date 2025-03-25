@@ -30,11 +30,11 @@ def _noop(*args: Any, **kwargs: Any) -> None: ...
 
 
 class Dependency(ABC, Option, Generic[P, T]):
-    def __init__(self, func: Func[P, T], block_name: str | None = None) -> None:
+    def __init__(self, func: Func[P, T]) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
         self._signature = inspect.signature(self._func)
-        self._block_name = block_name
+        self._block_name: str | None = None
 
         source_frame = get_first_external_frame()
         self._source_package = cast("str", source_frame.frame.f_globals["__package__"])
@@ -88,9 +88,6 @@ class Dependency(ABC, Option, Generic[P, T]):
     def signature(self) -> Signature:
         return self._signature
 
-    def set_block_name(self, name: str) -> None:
-        self._block_name = name
-
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         if self._is_async:
             return await cast("Awaitable[T]", self._func(*args, **kwargs))
@@ -117,8 +114,8 @@ class Invoke(Dependency):
         ```
     """
 
-    def __init__(self, invocation: Func[P, T], block_name: str | None = None) -> None:
-        super().__init__(func=invocation, block_name=block_name)
+    def __init__(self, invocation: Func[P, T]) -> None:
+        super().__init__(func=invocation)
 
     def apply(self, engin: "Engin") -> None:
         engin._invocations.append(self)
@@ -134,9 +131,9 @@ class Entrypoint(Invoke):
     Entrypoints are a short hand for no-op Invocations that can be used to
     """
 
-    def __init__(self, type_: type[Any], *, block_name: str | None = None) -> None:
+    def __init__(self, type_: type[Any]) -> None:
         self._type = type_
-        super().__init__(invocation=_noop, block_name=block_name)
+        super().__init__(invocation=_noop)
 
     @property
     def parameter_types(self) -> list[TypeId]:
@@ -155,8 +152,17 @@ class Entrypoint(Invoke):
 
 
 class Provide(Dependency[Any, T]):
-    def __init__(self, builder: Func[P, T], block_name: str | None = None) -> None:
-        super().__init__(func=builder, block_name=block_name)
+    def __init__(self, builder: Func[P, T], *, override: bool = False) -> None:
+        """
+        Provide a type via a builder or factory function.
+
+        Args:
+            builder: the builder function that returns the type.
+            override: allow this provider to override existing providers from the same
+                package.
+        """
+        super().__init__(func=builder)
+        self._override = override
         self._is_multi = typing.get_origin(self.return_type) is list
 
         # Validate that the provider does to depend on its own output value, as this will
@@ -198,10 +204,28 @@ class Provide(Dependency[Any, T]):
         return self._is_multi
 
     def apply(self, engin: "Engin") -> None:
+        type_id = self.return_type_id
         if self.is_multiprovider:
-            engin._multiproviders[self.return_type_id].append(self)
-        else:
-            engin._providers[self.return_type_id] = self
+            engin._multiproviders[type_id].append(self)
+            return
+
+        if type_id not in engin._providers:
+            engin._providers[type_id] = self
+            return
+
+        existing_provider = engin._providers[type_id]
+        is_same_package = existing_provider.source_package == self.source_package
+
+        # overwriting a dependency from the same package must be explicit
+        if is_same_package and not self._override:
+            msg = (
+                f"Provider '{self.name}' is implicitly overriding "
+                f"'{existing_provider.name}', if this is intended specify "
+                "`override=True` for the overriding Provider"
+            )
+            raise RuntimeError(msg)
+
+        engin._providers[type_id] = self
 
     def __hash__(self) -> int:
         return hash(self.return_type_id)
@@ -212,13 +236,27 @@ class Provide(Dependency[Any, T]):
 
 class Supply(Provide, Generic[T]):
     def __init__(
-        self, value: T, *, type_hint: type | None = None, block_name: str | None = None
+        self, value: T, *, as_type: type | None = None, override: bool = False
     ) -> None:
+        """
+        Supply a value.
+
+        This is a shorthand which under the hood creates a Provider with a noop factory
+        function.
+
+        Args:
+            value: the value to Supply
+            as_type: allows you to specify the provided type, useful for type erasing,
+              e.g. Supply a concrete value but specify it as an interface or other
+              abstraction.
+            override: allow this provider to override existing providers from the same
+              package.
+        """
         self._value = value
-        self._type_hint = type_hint
+        self._type_hint = as_type
         if self._type_hint is not None:
-            self._get_val.__annotations__["return"] = type_hint
-        super().__init__(builder=self._get_val, block_name=block_name)
+            self._get_val.__annotations__["return"] = as_type
+        super().__init__(builder=self._get_val, override=override)
 
     @property
     def return_type(self) -> type[T]:

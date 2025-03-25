@@ -60,18 +60,18 @@ def test_assembler_with_duplicate_provider_errors():
 async def test_assembler_get():
     assembler = Assembler([Provide(make_int), Provide(make_many_int)])
 
-    assert await assembler.get(int)
-    assert await assembler.get(list[int])
+    assert await assembler.build(int)
+    assert await assembler.build(list[int])
 
 
 async def test_assembler_with_unknown_type_raises_lookup_error():
     assembler = Assembler([])
 
     with pytest.raises(LookupError):
-        await assembler.get(str)
+        await assembler.build(str)
 
     with pytest.raises(LookupError):
-        await assembler.get(list[str])
+        await assembler.build(list[str])
 
     with pytest.raises(LookupError):
         await assembler.assemble(Entrypoint(str))
@@ -87,10 +87,10 @@ async def test_assembler_with_erroring_provider_raises_provider_error():
     assembler = Assembler([Provide(make_str), Provide(make_many_str)])
 
     with pytest.raises(ProviderError):
-        await assembler.get(str)
+        await assembler.build(str)
 
     with pytest.raises(ProviderError):
-        await assembler.get(list[str])
+        await assembler.build(list[str])
 
 
 async def test_annotations():
@@ -103,10 +103,10 @@ async def test_annotations():
     assembler = Assembler([Provide(make_str_1), Provide(make_str_2)])
 
     with pytest.raises(LookupError):
-        await assembler.get(str)
+        await assembler.build(str)
 
-    assert await assembler.get(Annotated[str, "1"]) == "bar"
-    assert await assembler.get(Annotated[str, "2"]) == "foo"
+    assert await assembler.build(Annotated[str, "1"]) == "bar"
+    assert await assembler.build(Annotated[str, "2"]) == "foo"
 
 
 async def test_assembler_has():
@@ -153,8 +153,8 @@ async def test_assembler_add_overrides():
     assembler = Assembler([])
     assembler.add(Provide(return_one))
 
-    assert await assembler.get(int) == 1
+    assert await assembler.build(int) == 1
 
     assembler.add(Provide(return_two))
 
-    assert await assembler.get(int) == 2
+    assert await assembler.build(int) == 2

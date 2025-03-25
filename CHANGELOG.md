@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.15] - 2025-03-25
+
+### Changed
+
+- `Provide` & `Supply` will now raise an error if overriding an existing provider from the
+  same package. This is to prevent accidental overrides. Users can explicitly allow
+  overrides by specifying the `override` parameter when defining the provider
+  `Provide(..., override=True)` or `@provide(override=True)`.
+- Lifecycle startup tasks will now timeout after 15 seconds and raise an error.
+- Assembler's `get` method has been renamed to `build`.
+- Supply's `type_hint` parameter has been renamed to `as_type`.
+
+### Fixed
+
+- `Assembler` would occasionally fail to call all multiproviders due to inconsistent
+  ordering.
+
+
 ## [0.0.14] - 2025-03-23
 
 ### Added
@@ -23,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ASGIEngin` now properly surfaces startup errors.
 - `Engin.run()` doing a double shutdown.
+
 
 ## [0.0.13] - 2025-03-22
 

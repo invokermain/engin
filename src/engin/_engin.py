@@ -84,7 +84,7 @@ class Engin:
         self._run_task: Task | None = None
 
         self._providers: dict[TypeId, Provide] = {
-            TypeId.from_type(Engin): Supply(self, type_hint=Engin)
+            TypeId.from_type(Engin): Supply(self, as_type=Engin)
         }
         self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
         self._invocations: list[Invoke] = []
@@ -132,14 +132,18 @@ class Engin:
                 LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
                 return
 
-        lifecycle = await self._assembler.get(Lifecycle)
+        lifecycle = await self._assembler.build(Lifecycle)
 
         try:
             for hook in lifecycle.list():
-                await self._exit_stack.enter_async_context(hook)
+                await asyncio.wait_for(self._exit_stack.enter_async_context(hook), timeout=15)
         except Exception as err:
-            LOG.error("lifecycle startup error, exiting", exc_info=err)
-            await self._exit_stack.aclose()
+            if isinstance(err, TimeoutError):
+                msg = "lifecycle startup task timed out after 15s, exiting"
+            else:
+                msg = "lifecycle startup task errored, exiting"
+            LOG.error(msg, exc_info=err)
+            await self._shutdown()
             return
 
         LOG.info("startup complete")
