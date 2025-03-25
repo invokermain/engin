@@ -159,7 +159,7 @@ class Provide(Dependency[Any, T]):
         Args:
             builder: the builder function that returns the type.
             override: allow this provider to override existing providers from the same
-              package.
+                package.
         """
         super().__init__(func=builder)
         self._override = override
