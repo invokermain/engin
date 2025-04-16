@@ -2,17 +2,26 @@ import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import Iterable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
+from types import TracebackType
 from typing import Any, Generic, TypeVar, cast
 
 from engin._dependency import Dependency, Provide, Supply
-from engin._exceptions import ProviderError
+from engin._exceptions import NotInScopeError, ProviderError
 from engin._type_utils import TypeId
 
 LOG = logging.getLogger("engin")
 
 T = TypeVar("T")
+_SCOPE: ContextVar[list[str] | None] = ContextVar("_SCOPE", default=None)
+
+
+def _get_scope() -> list[str]:
+    if _SCOPE.get() is None:
+        _SCOPE.set([])
+    return cast("list[str]", _SCOPE.get())
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -112,6 +121,8 @@ class Assembler:
 
             out = []
             for provider in self._multiproviders[type_id]:
+                if provider.scope and provider.scope not in _get_scope():
+                    raise NotInScopeError(provider=provider, scope_stack=_get_scope())
                 assembled_dependency = await self.assemble(provider)
                 try:
                     out.extend(await assembled_dependency())
@@ -127,12 +138,16 @@ class Assembler:
             if type_id not in self._providers:
                 raise LookupError(f"no provider found for target type id '{type_id}'")
 
-            assembled_dependency = await self.assemble(self._providers[type_id])
+            provider = self._providers[type_id]
+            if provider.scope and provider.scope not in _get_scope():
+                raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+
+            assembled_dependency = await self.assemble(provider)
             try:
                 value = await assembled_dependency()
             except Exception as err:
                 raise ProviderError(
-                    provider=self._providers[type_id],
+                    provider=provider,
                     error_type=type(err),
                     error_message=str(err),
                 ) from err
@@ -177,6 +192,14 @@ class Assembler:
             if type_id in self._assembled_outputs:
                 del self._assembled_outputs[type_id]
             self._providers[type_id] = provider
+
+    def scope(self, scope: str) -> "_ScopeContextManager":
+        return _ScopeContextManager(scope=scope, assembler=self)
+
+    def _exit_scope(self, scope: str) -> None:
+        for type_id, provider in self._providers.items():
+            if provider.scope == scope:
+                self._assembled_outputs.pop(type_id, None)
 
     def _resolve_providers(self, type_id: TypeId) -> Iterable[Provide]:
         """
@@ -251,3 +274,27 @@ class Assembler:
                 kwargs[param.name] = val
 
         return signature.bind(*args, **kwargs)
+
+
+class _ScopeContextManager:
+    def __init__(self, scope: str, assembler: Assembler) -> None:
+        self._scope = scope
+        self._assembler = assembler
+
+    def __enter__(self) -> Assembler:
+        _get_scope().append(self._scope)
+        return self._assembler
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
+        popped = _get_scope().pop()
+        if popped != self._scope:
+            raise RuntimeError(
+                f"Exited scope '{popped}' is not the expected scope '{self._scope}'"
+            )
+        self._assembler._exit_scope(self._scope)

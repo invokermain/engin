@@ -11,14 +11,14 @@ if TYPE_CHECKING:
 
 
 def provide(
-    func_: Func | None = None, *, override: bool = False
+    func_: Func | None = None, *, scope: str | None = None, override: bool = False
 ) -> Func | Callable[[Func], Func]:
     """
     A decorator for defining a Provider in a Block.
     """
 
     def _inner(func: Func) -> Func:
-        func._opt = Provide(func, override=override)  # type: ignore[attr-defined]
+        func._opt = Provide(func, override=override, scope=scope)  # type: ignore[attr-defined]
         return func
 
     if func_ is None:

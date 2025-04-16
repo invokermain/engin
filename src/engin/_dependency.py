@@ -152,16 +152,20 @@ class Entrypoint(Invoke):
 
 
 class Provide(Dependency[Any, T]):
-    def __init__(self, builder: Func[P, T], *, override: bool = False) -> None:
+    def __init__(
+        self, builder: Func[P, T], *, scope: str | None = None, override: bool = False
+    ) -> None:
         """
         Provide a type via a builder or factory function.
 
         Args:
             builder: the builder function that returns the type.
-            override: allow this provider to override existing providers from the same
-                package.
+            scope: (optional) associate this provider with a specific scope.
+            override: (optional) allow this provider to override existing providers from
+                the same package.
         """
         super().__init__(func=builder)
+        self._scope = scope
         self._override = override
         self._is_multi = typing.get_origin(self.return_type) is list
 
@@ -202,6 +206,10 @@ class Provide(Dependency[Any, T]):
     @property
     def is_multiprovider(self) -> bool:
         return self._is_multi
+
+    @property
+    def scope(self) -> str | None:
+        return self._scope
 
     def apply(self, engin: "Engin") -> None:
         type_id = self.return_type_id

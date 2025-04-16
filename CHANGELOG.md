@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.16] - 2025-04-16
+
+### Added
+
+- Preliminary support for scoped providers. Scoped providers are only accessible when
+  the assembler is in the matching scope, and the built output is only cached until the
+  assembler leaves the matching scope. This can be used for example to have request scoped
+  providers in a Web Server.
+
+### Changed
+
+- Minor improvements to the work-in-progress dependency grapher.
+
+
 ## [0.0.15] - 2025-03-25
 
 ### Changed
