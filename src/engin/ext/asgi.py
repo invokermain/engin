@@ -47,7 +47,8 @@ class ASGIEngin(Engin, ASGIType):
             elif message["type"] == "lifespan.shutdown":
                 await self.stop()
 
-        await self._asgi_app(scope, receive, send)
+        with self._assembler.scope("request"):
+            await self._asgi_app(scope, receive, send)
 
     async def _startup(self) -> None:
         self._asgi_app = await self._assembler.build(self._asgi_type)

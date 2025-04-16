@@ -1,9 +1,10 @@
+import time
 from typing import Annotated
 
 import pytest
 
 from engin import Assembler, Entrypoint, Invoke, Provide
-from engin._exceptions import ProviderError
+from engin._exceptions import NotInScopeError, ProviderError
 from tests.deps import make_int, make_many_int, make_many_int_alt, make_str
 
 
@@ -158,3 +159,45 @@ async def test_assembler_add_overrides():
     assembler.add(Provide(return_two))
 
     assert await assembler.build(int) == 2
+
+
+async def test_assembler_provider_not_in_scope():
+    def scoped_provider() -> int:
+        return time.time_ns()
+
+    assembler = Assembler([Provide(scoped_provider, scope="foo")])
+
+    with pytest.raises(NotInScopeError):
+        await assembler.build(int)
+
+
+async def test_assembler_provider_scope():
+    def scoped_provider() -> int:
+        return time.time_ns()
+
+    assembler = Assembler([Provide(scoped_provider, scope="foo")])
+
+    with assembler.scope("foo"):
+        await assembler.build(int)
+
+    with pytest.raises(NotInScopeError):
+        await assembler.build(int)
+
+
+async def test_assembler_provider_multi_scope():
+    def scoped_provider() -> int:
+        return time.time_ns()
+
+    def scoped_provider_2() -> str:
+        return "bar"
+
+    assembler = Assembler(
+        [Provide(scoped_provider, scope="foo"), Provide(scoped_provider_2, scope="bar")]
+    )
+
+    with assembler.scope("foo"):
+        await assembler.build(int)
+        with assembler.scope("bar"):
+            await assembler.build(int)
+            await assembler.build(str)
+        await assembler.build(int)

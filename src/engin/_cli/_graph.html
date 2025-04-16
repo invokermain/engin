@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <style>
+    #mermaid-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enables scrolling */
+    border: 1px solid #ddd;
+    cursor: grab;
+    position: relative;
+    white-space: nowrap; /* Prevents wrapping */
+  }
+
+  #mermaid-content {
+    width: max-content; /* Ensures content can expand */
+    height: max-content;
+  }
+  </style>
+  <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      let config = { flowchart: { useMaxWidth: false, htmlLabels: true, defaultRenderer: "elk" } };
+      mermaid.initialize(config);
+
+      // Drag-to-Move Functionality
+      const container = document.getElementById("mermaid-container");
+
+      let isDragging = false;
+      let startX, startY, scrollLeft, scrollTop;
+
+      container.addEventListener("pointerdown", (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+        container.style.cursor = "grabbing";
+      });
+
+      container.addEventListener("pointermove", (e) => {
+        if (!isDragging) return;
+        const x = e.clientX - startX;
+        const y = e.clientY - startY;
+        container.scrollLeft = scrollLeft - x;
+        container.scrollTop = scrollTop - y;
+      });
+
+      container.addEventListener("pointerup", () => {
+        isDragging = false;
+        container.style.cursor = "grab";
+      });
+
+      container.addEventListener("pointerleave", () => {
+        isDragging = false;
+        container.style.cursor = "grab";
+      });
+  </script>
+  <body>
+    <div style="border-style:outset">
+        <p>LEGEND</p>
+        <pre class="mermaid" id="legend">
+          graph LR
+            %%LEGEND%%
+            classDef b0 fill:#7fc97f;
+            classDef external stroke-dasharray: 5 5;
+        </pre>
+    </div>
+    <div id="mermaid-container" style="width: 100%; overflow-x: auto; border: 1px solid #ddd; cursor: grab; position: relative;">
+        <div id="mermaid-content" style="width: max-content; height: max-content;">
+            <pre class="mermaid" id="graph">
+              %%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+              graph LR
+                  %%DATA%%
+                  classDef external stroke-dasharray: 5 5;
+            </pre>
+        </div>
+    </div>
+  </body>
+</html>

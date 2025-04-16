@@ -9,7 +9,7 @@ from examples.fastapi.routes.cats.block import CatBlock
 
 logging.basicConfig(level=logging.DEBUG)
 
-app = FastAPIEngin(AppBlock(), CatBlock(), Supply(AppConfig(debug=True)))
+app = FastAPIEngin(AppBlock(), CatBlock(), Supply(AppConfig(debug=True), override=True))
 
 
 if __name__ == "__main__":

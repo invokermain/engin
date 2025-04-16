@@ -1,3 +1,4 @@
+import time
 from typing import Annotated
 
 import pytest
@@ -18,6 +19,14 @@ async def hello_world() -> str:
 
 @ROUTER.get("/inject")
 async def route_with_dep(some_int: Annotated[int, Inject(int)]) -> int:
+    return some_int
+
+
+@ROUTER.get("/inject2")
+async def route_with_dep_2(
+    some_int: Annotated[int, Inject(int)], some_str: Annotated[str, Inject(str)]
+) -> int:
+    assert some_int == int(some_str)
     return some_int
 
 
@@ -47,12 +56,12 @@ async def test_inject():
 
 
 async def test_graph():
-    engin = FastAPIEngin(Provide(app_factory), Supply([ROUTER]), Supply(10))
+    engin = FastAPIEngin(Provide(app_factory), Supply([ROUTER]), Supply(10), Supply("a"))
 
     nodes = engin.graph()
 
-    assert len(nodes) == 5
-    assert len([node for node in nodes if isinstance(node.node, APIRouteDependency)]) == 2
+    assert len(nodes) == 8
+    assert len([node for node in nodes if isinstance(node.node, APIRouteDependency)]) == 3
 
 
 async def test_invalid_engin():
@@ -70,3 +79,27 @@ async def test_engin_to_lifespan():
         result = client.get("http://127.0.0.1:8000/inject")
 
     assert result.json() == 10
+
+
+async def test_asgi_request_scope():
+    def scoped_factory() -> int:
+        return time.time_ns()
+
+    def child_factory(some: int) -> str:
+        return str(some)
+
+    app = FastAPIEngin(
+        Provide(app_factory),
+        Provide(scoped_factory, scope="request"),
+        Provide(child_factory),
+        Supply([ROUTER]),
+    )
+
+    with starlette.testclient.TestClient(app) as client:
+        first_call = client.get("http://127.0.0.1:8000/inject").json()
+        second_call = client.get("http://127.0.0.1:8000/inject").json()
+
+        # these should differ as the factory is request scoped to each request
+        assert first_call != second_call
+
+        client.get("http://127.0.0.1:8000/inject2")
