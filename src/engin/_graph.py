@@ -31,7 +31,7 @@ class DependencyGrapher:
     ) -> list[Node]:
         nodes: list[Node] = []
         for root in roots:
-            for parameter in root.parameter_types:
+            for parameter in root.parameter_type_ids:
                 provider = self._providers[parameter]
 
                 # multiprovider

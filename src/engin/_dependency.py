@@ -76,7 +76,7 @@ class Dependency(ABC, Option, Generic[P, T]):
             return f"{self._func.__module__}.{self._func.__name__}"
 
     @property
-    def parameter_types(self) -> list[TypeId]:
+    def parameter_type_ids(self) -> list[TypeId]:
         parameters = list(self._signature.parameters.values())
         if not parameters:
             return []
@@ -136,7 +136,7 @@ class Entrypoint(Invoke):
         super().__init__(invocation=_noop)
 
     @property
-    def parameter_types(self) -> list[TypeId]:
+    def parameter_type_ids(self) -> list[TypeId]:
         return [TypeId.from_type(self._type)]
 
     @property
@@ -153,7 +153,12 @@ class Entrypoint(Invoke):
 
 class Provide(Dependency[Any, T]):
     def __init__(
-        self, builder: Func[P, T], *, scope: str | None = None, override: bool = False
+        self,
+        builder: Func[P, T],
+        *,
+        scope: str | None = None,
+        as_type: type | None = None,
+        override: bool = False,
     ) -> None:
         """
         Provide a type via a builder or factory function.
@@ -161,19 +166,26 @@ class Provide(Dependency[Any, T]):
         Args:
             builder: the builder function that returns the type.
             scope: (optional) associate this provider with a specific scope.
-            override: (optional) allow this provider to override existing providers from
-                the same package.
+            as_type: (optional) allows you to explicitly specify the provided type, e.g.
+                to type erase a concrete type, or to provide a mock implementation.
+            override: (optional) allow this provider to override other providers for the
+                same type from the same package.
         """
         super().__init__(func=builder)
         self._scope = scope
         self._override = override
+        self._explicit_type = as_type
+
+        if self._explicit_type is not None:
+            self._signature = self._signature.replace(return_annotation=self._explicit_type)
+
         self._is_multi = typing.get_origin(self.return_type) is list
 
         # Validate that the provider does to depend on its own output value, as this will
         # cause a recursion error and is undefined behaviour wise.
         if any(
             self.return_type == param.annotation
-            for param in self.signature.parameters.values()
+            for param in self._signature.parameters.values()
         ):
             raise ValueError("A provider cannot depend on its own return type")
 
@@ -187,6 +199,8 @@ class Provide(Dependency[Any, T]):
 
     @property
     def return_type(self) -> type[T]:
+        if self._explicit_type is not None:
+            return self._explicit_type
         if isclass(self._func):
             return_type = self._func  # __init__ returns self
         else:
@@ -253,23 +267,19 @@ class Supply(Provide, Generic[T]):
         function.
 
         Args:
-            value: the value to Supply
-            as_type: allows you to specify the provided type, useful for type erasing,
-              e.g. Supply a concrete value but specify it as an interface or other
-              abstraction.
-            override: allow this provider to override existing providers from the same
-              package.
+            value: the value to Supply.
+            as_type: (optional) allows you to explicitly specify the provided type, e.g.
+              to type erase a concrete type, or to provide a mock implementation.
+            override: (optional) allow this provider to override other providers for the
+              same type from the same package.
         """
         self._value = value
-        self._type_hint = as_type
-        if self._type_hint is not None:
-            self._get_val.__annotations__["return"] = as_type
-        super().__init__(builder=self._get_val, override=override)
+        super().__init__(builder=self._get_val, as_type=as_type, override=override)
 
     @property
     def return_type(self) -> type[T]:
-        if self._type_hint is not None:
-            return self._type_hint
+        if self._explicit_type is not None:
+            return self._explicit_type
         if isinstance(self._value, list):
             return list[type(self._value[0])]  # type: ignore[misc,return-value]
         return type(self._value)

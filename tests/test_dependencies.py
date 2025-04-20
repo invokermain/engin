@@ -129,3 +129,15 @@ def test_provides_implicit_overrides_allowed_when_3rd_party():
 
     provide_a.apply(engin)
     provide_b.apply(engin)
+
+
+def test_provide_as_type():
+    provide = Provide(make_int, as_type=float)
+    assert provide.return_type is float
+    assert provide.signature.return_annotation is float
+
+
+def test_supply_as_type():
+    supply = Supply(3, as_type=float)
+    assert supply.return_type is float
+    assert supply.signature.return_annotation is float

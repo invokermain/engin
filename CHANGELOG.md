@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.17] - 2025-04-20
+
+### Added
+
+- `Provide` now has the `as_type` parameter that `Supply` had previously.
+
+### Changed
+
+- Renamed `parameter_types` property on dependencies to `parameter_type_ids` to be more
+  explicit.
+
+
 ## [0.0.16] - 2025-04-16
 
 ### Added

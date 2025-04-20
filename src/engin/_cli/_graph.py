@@ -165,7 +165,7 @@ def _render_node(node: Dependency, render_block: bool = True) -> str:
         md += f"{_short_name(node.return_type_id)}"
         return f'{node_id}["`{md}`"]{style}'
     if isinstance(node, Entrypoint):
-        entrypoint_type = node.parameter_types[0]
+        entrypoint_type = node.parameter_type_ids[0]
         md += f"{entrypoint_type}"
         return f'{node_id}[/"`{md}`"\\]{style}'
     if isinstance(node, Invoke):
