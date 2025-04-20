@@ -228,7 +228,7 @@ class Assembler:
         yield from (
             child_provider
             for root_provider in root_providers
-            for root_provider_param in root_provider.parameter_types
+            for root_provider_param in root_provider.parameter_type_ids
             for child_provider in self._resolve_providers(root_provider_param)
         )
         yield from root_providers

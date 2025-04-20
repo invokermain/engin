@@ -75,7 +75,7 @@ class _FastAPIDependencyGrapher(DependencyGrapher):
     ) -> list[Node]:
         nodes: list[Node] = []
         for root in roots:
-            for parameter in root.parameter_types:
+            for parameter in root.parameter_type_ids:
                 provider = self._providers[parameter]
 
                 # multiprovider
@@ -162,7 +162,7 @@ class APIRouteDependency(Dependency):
         return self._route
 
     @property
-    def parameter_types(self) -> list[TypeId]:
+    def parameter_type_ids(self) -> list[TypeId]:
         parameters = list(self._signature.parameters.values())
         if not parameters:
             return []
