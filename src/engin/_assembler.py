@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
@@ -74,6 +74,11 @@ class Assembler:
                 self._providers[type_id] = provider
             else:
                 self._multiproviders[type_id].append(provider)
+
+    @property
+    def providers(self) -> Sequence[Provide[Any]]:
+        multi_providers = [p for multi in self._multiproviders.values() for p in multi]
+        return [*self._providers.values(), *multi_providers]
 
     async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
         """

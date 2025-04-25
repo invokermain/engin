@@ -1,8 +1,5 @@
 import contextlib
-import importlib
-import logging
 import socketserver
-import sys
 import threading
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -12,8 +9,8 @@ from typing import Annotated, Any
 import typer
 from rich import print
 
-from engin import Engin, Entrypoint, Invoke, TypeId
-from engin._cli._utils import print_error
+from engin import Entrypoint, Invoke, TypeId
+from engin._cli._common import COMMON_HELP, get_engin_instance
 from engin._dependency import Dependency, Provide, Supply
 from engin.ext.asgi import ASGIEngin
 
@@ -24,52 +21,24 @@ except ImportError:
 
 cli = typer.Typer()
 
-# mute logging from importing of files + engin's debug logging.
-logging.disable()
 
 _APP_ORIGIN = ""
-
-_CLI_HELP = {
-    "app": (
-        "The import path of your Engin instance, in the form 'package:application'"
-        ", e.g. 'app.main:engin'"
-    )
-}
 
 
 @cli.command(name="graph")
 def serve_graph(
     app: Annotated[
         str,
-        typer.Argument(help=_CLI_HELP["app"]),
+        typer.Argument(help=COMMON_HELP["app"]),
     ],
 ) -> None:
     """
     Creates a visualisation of your application's dependencies.
     """
-    # add cwd to path to enable local package imports
-    sys.path.insert(0, "")
-
-    try:
-        module_name, engin_name = app.split(":", maxsplit=1)
-    except ValueError:
-        print_error("Expected an argument of the form 'module:attribute', e.g. 'myapp:engin'")
+    module_name, _, instance = get_engin_instance(app)
 
     global _APP_ORIGIN
     _APP_ORIGIN = module_name.split(".", maxsplit=1)[0]
-
-    try:
-        module = importlib.import_module(module_name)
-    except ModuleNotFoundError:
-        print_error(f"unable to find module '{module_name}'")
-
-    try:
-        instance = getattr(module, engin_name)
-    except AttributeError:
-        print_error(f"module '{module_name}' has no attribute '{engin_name}'")
-
-    if not isinstance(instance, Engin):
-        print_error(f"'{app}' is not an Engin instance")
 
     nodes = instance.graph()
 
