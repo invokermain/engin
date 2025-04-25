@@ -36,4 +36,4 @@ def test_cli_invalid_app_attribute() -> None:
 def test_cli_invalid_app_instance() -> None:
     result = runner.invoke(app=cli, args=["tests.cli.test_graph:runner"])
     assert result.exit_code == 1
-    assert "engin" in result.output
+    assert "Engin" in result.output
