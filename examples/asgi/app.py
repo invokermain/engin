@@ -6,7 +6,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
 from engin import Block, provide
-from engin.ext.asgi import ASGIType
+from engin.extensions.asgi import ASGIType
 
 
 class AppConfig(BaseSettings):

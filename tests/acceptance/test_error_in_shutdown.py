@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from starlette.applications import Starlette
 
 from engin import Engin, Invoke, Lifecycle, Provide
-from engin.ext.asgi import ASGIEngin, ASGIType
+from engin.extensions.asgi import ASGIEngin, ASGIType
 
 
 def a(lifecycle: Lifecycle) -> None:

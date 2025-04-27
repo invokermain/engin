@@ -12,10 +12,10 @@ from rich import print
 from engin import Entrypoint, Invoke, TypeId
 from engin._cli._common import COMMON_HELP, get_engin_instance
 from engin._dependency import Dependency, Provide, Supply
-from engin.ext.asgi import ASGIEngin
+from engin.extensions.asgi import ASGIEngin
 
 try:
-    from engin.ext.fastapi import APIRouteDependency
+    from engin.extensions.fastapi import APIRouteDependency
 except ImportError:
     APIRouteDependency = None  # type: ignore[assignment,misc]
 

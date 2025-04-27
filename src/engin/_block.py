@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from engin._dependency import Dependency, Func, Invoke, Provide
 from engin._option import Option
+from engin.exceptions import InvalidBlockError
 
 if TYPE_CHECKING:
     from engin._engin import Engin
@@ -42,7 +43,7 @@ def invoke(func_: Func | None = None) -> Func | Callable[[Func], Func]:
         return _inner(func_)
 
 
-class Block(Option):
+class Block:
     """
     A Block is a collection of providers and invocations.
 
@@ -74,7 +75,7 @@ class Block(Option):
 
     @classmethod
     def apply(cls, engin: "Engin") -> None:
-        block_name = cls.name or f"{cls.__name__}"
+        block_name = cls.name or cls.__name__
         for option in chain(cls.options, cls._method_options()):
             if isinstance(option, Dependency):
                 option._block_name = block_name
@@ -82,8 +83,19 @@ class Block(Option):
 
     @classmethod
     def _method_options(cls) -> Iterable[Provide | Invoke]:
-        for _, method in inspect.getmembers(cls):
+        for name, method in inspect.getmembers(cls, inspect.isfunction):
             if option := getattr(method, "_opt", None):
                 if not isinstance(option, Provide | Invoke):
-                    raise RuntimeError("Block option is not an instance of Provide or Invoke")
+                    raise InvalidBlockError(
+                        block=cls,
+                        reason="Block option is not an instance of Provide or Invoke",
+                    )
                 yield option
+            else:
+                raise InvalidBlockError(
+                    block=cls,
+                    reason=(
+                        f"Method '{name}' is not a Provider or Invocation, did you "
+                        "forget to decorate it?"
+                    ),
+                )

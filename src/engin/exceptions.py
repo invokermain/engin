@@ -1,6 +1,9 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from engin._dependency import Provide
+
+if TYPE_CHECKING:
+    from engin._block import Block
 
 
 class EnginError(Exception):
@@ -13,6 +16,20 @@ class AssemblerError(EnginError):
     """
     Base class for all custom exceptions raised by the Assembler.
     """
+
+
+class InvalidBlockError(EnginError):
+    """
+    Raised when an invalid block is instantiated.
+    """
+
+    def __init__(self, block: "type[Block]", reason: str) -> None:
+        self.block = block
+        self.block_name = block.name or block.__name__
+        self.message = f"block '{self.block_name}' is invalid, reason: '{reason}'"
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class ProviderError(AssemblerError):
@@ -52,3 +69,12 @@ class NotInScopeError(AssemblerError):
 
     def __str__(self) -> str:
         return self.message
+
+
+__all__ = [
+    "AssemblerError",
+    "EnginError",
+    "InvalidBlockError",
+    "NotInScopeError",
+    "ProviderError",
+]

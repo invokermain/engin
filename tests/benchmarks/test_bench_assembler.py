@@ -1,6 +1,6 @@
 from typing import Any
 
-import pyperf
+import pytest
 
 from engin import Assembler, Provide
 
@@ -109,6 +109,6 @@ async def main() -> None:
     await assembler.build(list[Any])
 
 
-if __name__ == "__main__":
-    runner = pyperf.Runner(values=100)
-    runner.bench_async_func("assembler", main)
+@pytest.mark.benchmark(min_rounds=5000, warmup="on")
+def test_assembler_benchmark(aio_benchmark):
+    aio_benchmark(main)

@@ -10,7 +10,7 @@ from engin import Assembler, Engin, Entrypoint, Invoke, Option
 from engin._dependency import Dependency, Supply, _noop
 from engin._graph import DependencyGrapher, Node
 from engin._type_utils import TypeId
-from engin.ext.asgi import ASGIEngin
+from engin.extensions.asgi import ASGIEngin
 
 try:
     from fastapi import APIRouter, FastAPI

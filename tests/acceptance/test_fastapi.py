@@ -6,8 +6,8 @@ import starlette.testclient
 from fastapi import APIRouter, FastAPI
 
 from engin import Engin, Provide, Supply
-from engin.ext.asgi import engin_to_lifespan
-from engin.ext.fastapi import APIRouteDependency, FastAPIEngin, Inject
+from engin.extensions.asgi import engin_to_lifespan
+from engin.extensions.fastapi import APIRouteDependency, FastAPIEngin, Inject
 
 ROUTER = APIRouter(prefix="")
 
