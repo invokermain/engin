@@ -109,6 +109,6 @@ async def main() -> None:
     await assembler.build(list[Any])
 
 
-@pytest.mark.benchmark(min_rounds=5000, warmup="on")
+@pytest.mark.benchmark(min_rounds=10000, warmup="on")
 def test_assembler_benchmark(aio_benchmark):
     aio_benchmark(main)

@@ -5,11 +5,11 @@ import pytest
 
 from engin import Assembler, Entrypoint, Invoke, Provide
 from engin.exceptions import NotInScopeError, ProviderError
-from tests.deps import make_int, make_many_int, make_many_int_alt, make_str
+from tests.deps import int_provider, make_many_int, make_many_int_alt, make_str
 
 
 async def test_assembler():
-    assembler = Assembler([Provide(make_int), Provide(make_str), Provide(make_many_int)])
+    assembler = Assembler([int_provider(), Provide(make_str), Provide(make_many_int)])
 
     def assert_all(some_int: int, some_str: str, many_ints: list[int]):
         assert isinstance(some_str, str)
@@ -55,11 +55,11 @@ async def test_assembler_providers_only_called_once():
 
 def test_assembler_with_duplicate_provider_errors():
     with pytest.raises(RuntimeError):
-        Assembler([Provide(make_int), Provide(make_int)])
+        Assembler([int_provider(), int_provider()])
 
 
 async def test_assembler_get():
-    assembler = Assembler([Provide(make_int), Provide(make_many_int)])
+    assembler = Assembler([int_provider(), Provide(make_many_int)])
 
     assert await assembler.build(int)
     assert await assembler.build(list[int])
@@ -134,7 +134,7 @@ async def test_assembler_has_multi():
 
 async def test_assembler_add():
     assembler = Assembler([])
-    assembler.add(Provide(make_int))
+    assembler.add(int_provider())
     assembler.add(Provide(make_many_int))
 
     assert assembler.has(int)
@@ -145,20 +145,35 @@ async def test_assembler_add():
 
 
 async def test_assembler_add_overrides():
-    def return_one() -> int:
-        return 1
+    def str_provider_a(val: int) -> str:
+        return f"a{val}"
 
-    def return_two() -> int:
-        return 2
+    def str_provider_b(val: int) -> str:
+        return f"b{val}"
 
-    assembler = Assembler([])
-    assembler.add(Provide(return_one))
+    assembler = Assembler([int_provider(1), Provide(str_provider_a)])
+
+    assert await assembler.build(str) == "a1"
+
+    assembler.add(int_provider(2))
+    assembler.add(Provide(str_provider_b))
+
+    assert await assembler.build(str) == "b2"
+
+
+async def test_assembler_add_clears_caches():
+    def make_str(val: int) -> str:
+        return str(val)
+
+    assembler = Assembler([int_provider(1), Provide(make_str)])
 
     assert await assembler.build(int) == 1
+    assert await assembler.build(str) == "1"
 
-    assembler.add(Provide(return_two))
+    assembler.add(int_provider(2))
 
     assert await assembler.build(int) == 2
+    assert await assembler.build(str) == "2"
 
 
 async def test_assembler_provider_not_in_scope():
