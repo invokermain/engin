@@ -37,6 +37,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "typer>=0.15.2",
     "pytest-mock>=3.14.0",
+    "pyperf>=2.9.0",
 ]
 docs = [
     "mkdocs-material>=9.5.50",
