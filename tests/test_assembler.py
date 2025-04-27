@@ -4,7 +4,7 @@ from typing import Annotated
 import pytest
 
 from engin import Assembler, Entrypoint, Invoke, Provide
-from engin._exceptions import NotInScopeError, ProviderError
+from engin.exceptions import NotInScopeError, ProviderError
 from tests.deps import make_int, make_many_int, make_many_int_alt, make_str
 
 

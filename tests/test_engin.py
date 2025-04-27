@@ -5,7 +5,8 @@ from datetime import datetime
 
 import pytest
 
-from engin import Engin, Entrypoint, Invoke, Lifecycle, Provide, ProviderError
+from engin import Engin, Entrypoint, Invoke, Lifecycle, Provide
+from engin.exceptions import ProviderError
 from tests.deps import ABlock
 
 

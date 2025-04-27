@@ -1,6 +1,6 @@
 [project]
 name = "engin"
-version = "0.0.18"
+version = "0.0.19"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -37,7 +37,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "typer>=0.15.2",
     "pytest-mock>=3.14.0",
-    "pyperf>=2.9.0",
+    "pytest-benchmark>=5.1.0",
 ]
 docs = [
     "mkdocs-material>=9.5.50",
@@ -113,6 +113,7 @@ check.sequence = [
 fix.default_item_type = "cmd"
 fix.sequence = ["ruff check src tests examples --fix"]
 
-test = "pytest tests"
-ci-test = "pytest --cov=engin --cov-branch --cov-report=xml tests"
+test = "pytest tests --benchmark-skip"
+ci-test = "pytest --cov=engin --cov-branch --cov-report=xml tests --benchmark-skip"
+bench = "pytest tests --benchmark-only"
 docs = "mkdocs serve"

@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from engin.ext.fastapi import Inject
+from engin.extensions.fastapi import Inject
 from examples.fastapi.routes.cats.domain import Cat, CatPersonality
 from examples.fastapi.routes.cats.ports import CatRepository
 

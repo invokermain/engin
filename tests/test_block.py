@@ -1,4 +1,9 @@
+from unittest.mock import Mock
+
+import pytest
+
 from engin import Block, Engin, invoke, provide
+from engin.exceptions import InvalidBlockError
 
 
 def test_block():
@@ -23,3 +28,27 @@ def test_block():
 
     assert len(options) == 4
     assert Engin(my_block)
+
+
+def test_block_validation_undecorated_method():
+    class MyBlock(Block):
+        def provide_str(self) -> str:
+            return "3"
+
+    with pytest.raises(InvalidBlockError) as exc_info:
+        MyBlock.apply(Mock())
+
+    assert "forget" in str(exc_info.value)
+
+
+def test_block_validation_illegal_decorator():
+    class MyBlock(Block):
+        def provide_str(self) -> str:
+            return "3"
+
+        provide_str._opt = int
+
+    with pytest.raises(InvalidBlockError) as exc_info:
+        MyBlock.apply(Mock())
+
+    assert "Invoke" in str(exc_info.value)

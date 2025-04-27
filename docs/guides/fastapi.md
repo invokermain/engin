@@ -18,7 +18,7 @@ provide an instance of a `FastAPI` application:
 
 ```python
 from engin import Supply
-from engin.ext.fastapi import FastAPIEngin
+from engin.extensions.fastapi import FastAPIEngin
 from fastapi import FastAPI
 import uvicorn
 
@@ -74,19 +74,23 @@ reusable SQL session per request, we could use a nested dependency:
 ```python
 from typing import Annotated, AsyncIterable
 
-from engin.ext.fastapi import Inject
+from engin.extensions.fastapi import Inject
 from fastapi import Depends
 
+
 async def database_session(
-    database: Annotated[Database, Inject(Database)])
-) -> AsyncIterable[Session]:
+        database: Annotated[Database, Inject(Database)])
+
+    ) -> AsyncIterable[Session]:
     with database.new_session() as session:
         yield session
-        session.commit()
+    session.commit()
 
-@app.post("/{id}")
-async def add_item(session: Annotated[Session, Depends(database_session)]):
-    session.add(MyORMModel(...))
+    @ app.post("/{id}")
+    async
+
+    def add_item(session: Annotated[Session, Depends(database_session)]):
+        session.add(MyORMModel(...))
 ```
 
 
@@ -109,17 +113,18 @@ this is to use `Supply` as the router is already instantiated. We also need to a
 `APIRouter` to our `FastAPI` application, we can do this in the provider for `FastAPI`.
 
 ```python title="app.py"
-from engin.ext.fastapi import FastAPIEngin
+from engin.extensions.fastapi import FastAPIEngin
 from fastapi import FastAPI
 
 from api import users_router
 
+
 def create_fastapi_app(api_routers: list[APIRouter]) -> FastAPI:
     app = FastAPI()
-    
+
     for api_router in api_routers:
         app.include_router(api_router)
-        
+
     return app
 
 
@@ -135,21 +140,22 @@ Or similarly, we could use a block instead:
 
 ```python title="app.py"
 from engin import Block, provide
-from engin.ext.fastapi import FastAPIEngin
+from engin.extensions.fastapi import FastAPIEngin
 from fastapi import FastAPI
 
 from api import users_router
 
+
 class AppBlock(Block):
     options = [Supply([users_router])]
-    
+
     @provide
     def create_fastapi_app(self, api_routers: list[APIRouter]) -> FastAPI:
         app = FastAPI()
-        
+
         for api_router in api_routers:
             app.include_router(api_router)
-            
+
         return app
 
 

@@ -27,10 +27,12 @@ jobs:
 
       - name: Run benchmark
         run: |
-          uv run python benchmarks/assembler.py --output benchmarks/assembler-main.json
+          uv run pytest tests --benchmark-only --benchmark-json bench.json
 
-      - name: Upload main benchmark artifact
-        uses: actions/upload-artifact@v4
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: assembler-main
-          path: benchmarks/assembler-main.json
+          tool: 'pytest'
+          output-file-path: bench.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true

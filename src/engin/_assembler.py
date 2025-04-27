@@ -9,8 +9,8 @@ from types import TracebackType
 from typing import Any, Generic, TypeVar, cast
 
 from engin._dependency import Dependency, Provide, Supply
-from engin._exceptions import NotInScopeError, ProviderError
 from engin._type_utils import TypeId
+from engin.exceptions import NotInScopeError, ProviderError
 
 LOG = logging.getLogger("engin")
 
