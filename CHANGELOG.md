@@ -14,10 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Improved performance of Provide & Assembler by a factor of >2x (in certain scenarios).
 - Renamed the `ext` subpackage to `extensions`.
 - Errors are now imported from `engin.exceptions.*` instead of `engin.*`
 - Blocks will now raise an `InvalidBlockError` if the block has methods which are not
   decorated with `@provide` & `@invoke`.
+
+### Fixed
+
+- `Assembler.add` incorrect cache invalidation logic.
 
 
 ## [0.0.18] - 2025-04-25

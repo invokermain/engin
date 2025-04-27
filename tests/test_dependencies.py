@@ -3,16 +3,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from engin import Provide
-from engin._dependency import Entrypoint, Supply
-from tests.deps import make_aliased_int, make_int
+from engin import Entrypoint, Invoke, Provide, Supply
+from tests.deps import int_provider, make_aliased_int, make_int
 
 
 def test_provide_discriminates_singular():
-    def i_provide() -> int:
-        return 3
-
-    provider = Provide(i_provide)
+    provider = int_provider()
     assert not provider.is_multiprovider
     assert provider.return_type_id.type is int
     assert not provider.return_type_id.multi
@@ -71,7 +67,7 @@ def test_dependency_sources():
     assert supply.source_module == "tests.test_dependencies"
     assert supply.source_package == "tests"
 
-    invoke = Provide(make_int)
+    invoke = Invoke(make_int)
     assert invoke.source_module == "tests.test_dependencies"
     assert invoke.source_package == "tests"
 
@@ -95,8 +91,8 @@ def test_provider_cannot_depend_on_self():
 
 
 def test_provides_implicit_overrides():
-    provide_a = Provide(make_int)
-    provide_b = Provide(make_int)
+    provide_a = int_provider()
+    provide_b = int_provider()
 
     engin = Mock()
     engin._providers = {}
@@ -108,8 +104,8 @@ def test_provides_implicit_overrides():
 
 
 def test_provides_explicit_overrides_allowed():
-    provide_a = Provide(make_int)
-    provide_b = Provide(make_int, override=True)
+    provide_a = int_provider()
+    provide_b = int_provider(override=True)
 
     engin = Mock()
     engin._providers = {}
@@ -119,8 +115,8 @@ def test_provides_explicit_overrides_allowed():
 
 
 def test_provides_implicit_overrides_allowed_when_3rd_party():
-    provide_a = Provide(make_int)
-    provide_b = Provide(make_int)
+    provide_a = int_provider()
+    provide_b = int_provider()
 
     provide_a._source_package = "foo"
 
@@ -132,7 +128,7 @@ def test_provides_implicit_overrides_allowed_when_3rd_party():
 
 
 def test_provide_as_type():
-    provide = Provide(make_int, as_type=float)
+    provide = int_provider(as_type=float)
     assert provide.return_type is float
     assert provide.signature.return_annotation is float
 

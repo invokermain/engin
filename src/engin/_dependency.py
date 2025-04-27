@@ -175,47 +175,37 @@ class Provide(Dependency[Any, T]):
         self._scope = scope
         self._override = override
         self._explicit_type = as_type
+        self._return_type = self._resolve_return_type()
+        self._return_type_id = TypeId.from_type(self._return_type)
 
         if self._explicit_type is not None:
             self._signature = self._signature.replace(return_annotation=self._explicit_type)
 
-        self._is_multi = typing.get_origin(self.return_type) is list
+        self._is_multi = typing.get_origin(self._return_type) is list
 
         # Validate that the provider does to depend on its own output value, as this will
         # cause a recursion error and is undefined behaviour wise.
         if any(
-            self.return_type == param.annotation
+            self._return_type == param.annotation
             for param in self._signature.parameters.values()
         ):
             raise ValueError("A provider cannot depend on its own return type")
 
         # Validate that multiproviders only return a list of one type.
         if self._is_multi:
-            args = typing.get_args(self.return_type)
+            args = typing.get_args(self._return_type)
             if len(args) != 1:
                 raise ValueError(
-                    f"A multiprovider must be of the form list[X], not '{self.return_type}'"
+                    f"A multiprovider must be of the form list[X], not '{self._return_type}'"
                 )
 
     @property
     def return_type(self) -> type[T]:
-        if self._explicit_type is not None:
-            return self._explicit_type
-        if isclass(self._func):
-            return_type = self._func  # __init__ returns self
-        else:
-            try:
-                return_type = get_type_hints(self._func, include_extras=True)["return"]
-            except KeyError as err:
-                raise RuntimeError(
-                    f"Dependency '{self.name}' requires a return typehint"
-                ) from err
-
-        return return_type
+        return self._return_type
 
     @property
     def return_type_id(self) -> TypeId:
-        return TypeId.from_type(self.return_type)
+        return self._return_type_id
 
     @property
     def is_multiprovider(self) -> bool:
@@ -255,6 +245,21 @@ class Provide(Dependency[Any, T]):
     def __str__(self) -> str:
         return f"Provide({self.return_type_id})"
 
+    def _resolve_return_type(self) -> type[T]:
+        if self._explicit_type is not None:
+            return self._explicit_type
+        if isclass(self._func):
+            return_type = self._func  # __init__ returns self
+        else:
+            try:
+                return_type = get_type_hints(self._func, include_extras=True)["return"]
+            except KeyError as err:
+                raise RuntimeError(
+                    f"Dependency '{self.name}' requires a return typehint"
+                ) from err
+
+        return return_type
+
 
 class Supply(Provide, Generic[T]):
     def __init__(
@@ -276,8 +281,7 @@ class Supply(Provide, Generic[T]):
         self._value = value
         super().__init__(builder=self._get_val, as_type=as_type, override=override)
 
-    @property
-    def return_type(self) -> type[T]:
+    def _resolve_return_type(self) -> type[T]:
         if self._explicit_type is not None:
             return self._explicit_type
         if isinstance(self._value, list):

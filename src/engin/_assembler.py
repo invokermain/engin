@@ -65,6 +65,7 @@ class Assembler:
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._assembled_outputs: dict[TypeId, Any] = {}
         self._lock = asyncio.Lock()
+        self._graph_cache: dict[TypeId, set[Provide]] = defaultdict(set)
 
         for provider in providers:
             type_id = provider.return_type_id
@@ -179,8 +180,8 @@ class Assembler:
         """
         Add a provider to the Assembler post-initialisation.
 
-        If this replaces an existing provider, this will clear any previously assembled
-        output for the existing Provider.
+        If this replaces an existing provider, this will clear all previously assembled
+        output. Note: multiproviders cannot be replaced, they are always appended.
 
         Args:
             provider: the Provide instance to add.
@@ -190,13 +191,12 @@ class Assembler:
         """
         type_id = provider.return_type_id
         if provider.is_multiprovider:
-            if type_id in self._assembled_outputs:
-                del self._assembled_outputs[type_id]
             self._multiproviders[type_id].append(provider)
         else:
-            if type_id in self._assembled_outputs:
-                del self._assembled_outputs[type_id]
             self._providers[type_id] = provider
+
+        self._assembled_outputs.clear()
+        self._graph_cache.clear()
 
     def scope(self, scope: str) -> "_ScopeContextManager":
         return _ScopeContextManager(scope=scope, assembler=self)
@@ -206,13 +206,14 @@ class Assembler:
             if provider.scope == scope:
                 self._assembled_outputs.pop(type_id, None)
 
-    def _resolve_providers(self, type_id: TypeId) -> Iterable[Provide]:
+    def _resolve_providers(self, type_id: TypeId, resolved: set[TypeId]) -> set[Provide]:
         """
         Resolves the chain of providers required to satisfy the provider of a given type.
         Ordering of the return value is very important!
-
-        # TODO: performance optimisation, do not recurse for already satisfied providers?
         """
+        if type_id in self._graph_cache:
+            return self._graph_cache[type_id]
+
         if type_id.multi:
             root_providers = self._multiproviders.get(type_id)
         else:
@@ -230,22 +231,28 @@ class Assembler:
                 raise LookupError(msg)
 
         # providers that must be satisfied to satisfy the root level providers
-        yield from (
+        resolved_providers = {
             child_provider
             for root_provider in root_providers
             for root_provider_param in root_provider.parameter_type_ids
-            for child_provider in self._resolve_providers(root_provider_param)
-        )
-        yield from root_providers
+            for child_provider in self._resolve_providers(root_provider_param, resolved)
+            if root_provider_param not in resolved
+        } | set(root_providers)
+
+        resolved.add(type_id)
+        self._graph_cache[type_id] = resolved_providers
+
+        return resolved_providers
 
     async def _satisfy(self, target: TypeId) -> None:
-        for provider in self._resolve_providers(target):
+        for provider in self._resolve_providers(target, set()):
             if (
                 not provider.is_multiprovider
                 and provider.return_type_id in self._assembled_outputs
             ):
                 continue
             type_id = provider.return_type_id
+
             bound_args = await self._bind_arguments(provider.signature)
             try:
                 value = await provider(*bound_args.args, **bound_args.kwargs)
@@ -253,6 +260,7 @@ class Assembler:
                 raise ProviderError(
                     provider=provider, error_type=type(err), error_message=str(err)
                 ) from err
+
             if provider.is_multiprovider:
                 if type_id in self._assembled_outputs:
                     self._assembled_outputs[type_id].extend(value)
@@ -269,8 +277,7 @@ class Assembler:
                 args.append(object())
                 continue
             param_key = TypeId.from_type(param.annotation)
-            has_dependency = param_key in self._assembled_outputs
-            if not has_dependency:
+            if param_key not in self._assembled_outputs:
                 await self._satisfy(param_key)
             val = self._assembled_outputs[param_key]
             if param.kind == param.POSITIONAL_ONLY:
