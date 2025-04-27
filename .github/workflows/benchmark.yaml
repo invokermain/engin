@@ -34,5 +34,5 @@ jobs:
         with:
           tool: 'pytest'
           output-file-path: bench.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT }}
           auto-push: true
