@@ -1,11 +1,32 @@
+from datetime import datetime
+
+from fastapi import APIRouter
 from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
-from engin import Engin, Entrypoint
+from engin import Engin, Entrypoint, Invoke, Supply
 from engin._cli._graph import cli
 from tests.deps import ABlock
 
-engin = Engin(ABlock, Entrypoint(list[float]))
+
+def invoke_something(dt: datetime) -> None: ...
+
+
+api_router = APIRouter()
+
+
+@api_router.get("/hello")
+def get_hello() -> str:
+    return "hello"
+
+
+engin = Engin(
+    ABlock,
+    Supply("3"),
+    Supply(api_router),
+    Invoke(invoke_something),
+    Entrypoint(list[float]),
+)
 runner = CliRunner()
 
 
