@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745867030642,
+  "lastUpdate": 1746040467278,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -119,6 +119,36 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000043840125941082704",
             "extra": "mean: 972.6801548001191 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "="
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "d813e8a76207461e5cfacd42a2e61974e26bd19d",
+          "message": "tests: increase coverage",
+          "timestamp": "2025-04-30T20:13:47+01:00",
+          "tree_id": "b3454248e188ed5c87735fbb6b37342122c275f5",
+          "url": "https://github.com/invokermain/engin/commit/d813e8a76207461e5cfacd42a2e61974e26bd19d"
+        },
+        "date": 1746040466929,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1047.7333670042979,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00004388285181227091",
+            "extra": "mean: 954.4413029998481 usec\nrounds: 10000"
           }
         ]
       }
