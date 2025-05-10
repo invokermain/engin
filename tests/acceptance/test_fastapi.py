@@ -4,6 +4,7 @@ from typing import Annotated
 import pytest
 import starlette.testclient
 from fastapi import APIRouter, FastAPI
+from starlette.websockets import WebSocket
 
 from engin import Engin, Provide, Supply
 from engin.extensions.asgi import engin_to_lifespan
@@ -22,6 +23,16 @@ async def route_with_dep(some_int: Annotated[int, Inject(int)]) -> int:
     return some_int
 
 
+@ROUTER.websocket("/websocket")
+async def websocket_with_dep(
+    websocket: WebSocket, some_int: Annotated[int, Inject(int)]
+) -> None:
+    await websocket.accept()
+    for i in range(5):
+        await websocket.send_text(str(i + some_int))
+    await websocket.close()
+
+
 @ROUTER.get("/inject2")
 async def route_with_dep_2(
     some_int: Annotated[int, Inject(int)], some_str: Annotated[str, Inject(str)]
@@ -37,7 +48,7 @@ def app_factory(routers: list[APIRouter]) -> FastAPI:
     return app
 
 
-async def test_fastapi():
+def test_fastapi():
     engin = FastAPIEngin(Provide(app_factory), Supply([ROUTER]))
 
     with starlette.testclient.TestClient(engin) as client:
@@ -46,13 +57,24 @@ async def test_fastapi():
     assert result.json() == "hello world"
 
 
-async def test_inject():
+def test_inject():
     engin = FastAPIEngin(Provide(app_factory), Supply([ROUTER]), Supply(10))
 
     with starlette.testclient.TestClient(engin) as client:
-        result = client.get("http://127.0.0.1:8000/inject")
+        result = client.get("/inject")
 
     assert result.json() == 10
+
+
+def test_inject_websocket():
+    engin = FastAPIEngin(Provide(app_factory), Supply([ROUTER]), Supply(10))
+
+    with (
+        starlette.testclient.TestClient(engin) as client,
+        client.websocket_connect("/websocket") as ws,
+    ):
+        data = ws.receive_text()
+        assert data == "10"
 
 
 async def test_graph():

@@ -38,6 +38,7 @@ dev = [
     "typer>=0.15.2",
     "pytest-mock>=3.14.0",
     "pytest-benchmark>=5.1.0",
+    "websockets>=15.0.1",
 ]
 docs = [
     "mkdocs-material>=9.5.50",
