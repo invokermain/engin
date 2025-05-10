@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746040467278,
+  "lastUpdate": 1746865852931,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -149,6 +149,36 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00004388285181227091",
             "extra": "mean: 954.4413029998481 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "="
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "b1d6d3be94b8817c9b7e479e4d5cd94717b4d935",
+          "message": "tests: add fastapi websockets test",
+          "timestamp": "2025-05-10T09:30:12+01:00",
+          "tree_id": "cbd8d6ceb6f645cdcff908592b44263c11028e09",
+          "url": "https://github.com/invokermain/engin/commit/b1d6d3be94b8817c9b7e479e4d5cd94717b4d935"
+        },
+        "date": 1746865852184,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1048.681712543487,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000047910677555376084",
+            "extra": "mean: 953.5781810999509 usec\nrounds: 10000"
           }
         ]
       }
