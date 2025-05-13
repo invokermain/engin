@@ -33,6 +33,7 @@ nav:
       - Providers: "concepts/providers.md"
       - Invocations: "concepts/invocations.md"
       - Lifecycle: "concepts/lifecycle.md"
+      - Blocks: "concepts/blocks.md"
   - Guides:
       - FastAPI: "guides/fastapi.md"
   - Reference: "reference.md"
