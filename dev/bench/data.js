@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746865852931,
+  "lastUpdate": 1747126673329,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -179,6 +179,36 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000047910677555376084",
             "extra": "mean: 953.5781810999509 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "="
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "4c58b642dbe8e6a870b0e99d8127f1cf4ae0921e",
+          "message": "docs: add blocks page to mkdocs.yaml",
+          "timestamp": "2025-05-13T09:57:10+01:00",
+          "tree_id": "4c890de8d99d1abba5433c282c7402fa4224ba31",
+          "url": "https://github.com/invokermain/engin/commit/4c58b642dbe8e6a870b0e99d8127f1cf4ae0921e"
+        },
+        "date": 1747126672477,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1043.0230871181354,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00005445433998542916",
+            "extra": "mean: 958.7515485999376 usec\nrounds: 10000"
           }
         ]
       }
