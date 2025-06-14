@@ -14,7 +14,7 @@ integrate with other functionality in the rest of the framework.
 A Block is just a class that inherits from `Block`:
 
 ```python
-from engin import Engin, Block, provide, invoke
+from engin import Block
 
 
 class ExampleBlock(Block):
@@ -27,10 +27,10 @@ Blocks have a class attribute named `options` which can be used to include exist
 options.
 
 ```python
-from engin import Engin, Block, Invoke, Provide, Supply
+from engin import Engin, Block, Invoke, Supply
 
 
-def print_string(self, string: str) -> None:
+def print_string(string: str) -> None:
    print(string)
 
    
@@ -61,7 +61,7 @@ respective classes `Provide` & `Invoke`.
 
 
 ```python
-from engin import Engin, Block, provide, invoke
+from engin import Block, provide, invoke
 
 
 # this block is equivalent to the one in the example above

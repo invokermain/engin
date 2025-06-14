@@ -16,7 +16,7 @@ async def test_assembler():
         assert isinstance(some_int, int)
         assert all(isinstance(x, int) for x in many_ints)
 
-    assembled_dependency = await assembler.assemble(Invoke(assert_all))
+    assembled_dependency = assembler.assemble(Invoke(assert_all))
 
     await assembled_dependency()
 
@@ -28,7 +28,7 @@ async def test_assembler_with_multiproviders():
         expected_ints = [*make_many_int(), *make_many_int_alt()]
         assert sorted(many_ints) == sorted(expected_ints)
 
-    assembled_dependency = await assembler.assemble(Invoke(assert_all))
+    assembled_dependency = assembler.assemble(Invoke(assert_all))
 
     await assembled_dependency()
 
@@ -46,10 +46,10 @@ async def test_assembler_providers_only_called_once():
 
     assembler = Assembler([Provide(count)])
 
-    assembled_dependency = await assembler.assemble(Invoke(assert_singleton))
+    assembled_dependency = assembler.assemble(Invoke(assert_singleton))
     await assembled_dependency()
 
-    assembled_dependency = await assembler.assemble(Invoke(assert_singleton))
+    assembled_dependency = assembler.assemble(Invoke(assert_singleton))
     await assembled_dependency()
 
 
@@ -61,21 +61,21 @@ def test_assembler_with_duplicate_provider_errors():
 async def test_assembler_get():
     assembler = Assembler([int_provider(), Provide(make_many_int)])
 
-    assert await assembler.build(int)
-    assert await assembler.build(list[int])
+    assert assembler.build(int)
+    assert assembler.build(list[int])
 
 
 async def test_assembler_with_unknown_type_raises_lookup_error():
     assembler = Assembler([])
 
     with pytest.raises(LookupError):
-        await assembler.build(str)
+        assembler.build(str)
 
     with pytest.raises(LookupError):
-        await assembler.build(list[str])
+        assembler.build(list[str])
 
     with pytest.raises(LookupError):
-        await assembler.assemble(Entrypoint(str))
+        assembler.assemble(Entrypoint(str))
 
 
 async def test_assembler_with_erroring_provider_raises_provider_error():
@@ -88,10 +88,10 @@ async def test_assembler_with_erroring_provider_raises_provider_error():
     assembler = Assembler([Provide(make_str), Provide(make_many_str)])
 
     with pytest.raises(ProviderError):
-        await assembler.build(str)
+        assembler.build(str)
 
     with pytest.raises(ProviderError):
-        await assembler.build(list[str])
+        assembler.build(list[str])
 
 
 async def test_annotations():
@@ -104,10 +104,10 @@ async def test_annotations():
     assembler = Assembler([Provide(make_str_1), Provide(make_str_2)])
 
     with pytest.raises(LookupError):
-        await assembler.build(str)
+        assembler.build(str)
 
-    assert await assembler.build(Annotated[str, "1"]) == "bar"
-    assert await assembler.build(Annotated[str, "2"]) == "foo"
+    assert assembler.build(Annotated[str, "1"]) == "bar"
+    assert assembler.build(Annotated[str, "2"]) == "foo"
 
 
 async def test_assembler_has():
@@ -153,12 +153,12 @@ async def test_assembler_add_overrides():
 
     assembler = Assembler([int_provider(1), Provide(str_provider_a)])
 
-    assert await assembler.build(str) == "a1"
+    assert assembler.build(str) == "a1"
 
     assembler.add(int_provider(2))
     assembler.add(Provide(str_provider_b))
 
-    assert await assembler.build(str) == "b2"
+    assert assembler.build(str) == "b2"
 
 
 async def test_assembler_add_clears_caches():
@@ -167,13 +167,13 @@ async def test_assembler_add_clears_caches():
 
     assembler = Assembler([int_provider(1), Provide(make_str)])
 
-    assert await assembler.build(int) == 1
-    assert await assembler.build(str) == "1"
+    assert assembler.build(int) == 1
+    assert assembler.build(str) == "1"
 
     assembler.add(int_provider(2))
 
-    assert await assembler.build(int) == 2
-    assert await assembler.build(str) == "2"
+    assert assembler.build(int) == 2
+    assert assembler.build(str) == "2"
 
 
 async def test_assembler_provider_not_in_scope():
@@ -183,7 +183,7 @@ async def test_assembler_provider_not_in_scope():
     assembler = Assembler([Provide(scoped_provider, scope="foo")])
 
     with pytest.raises(NotInScopeError):
-        await assembler.build(int)
+        assembler.build(int)
 
 
 async def test_assembler_provider_scope():
@@ -193,10 +193,10 @@ async def test_assembler_provider_scope():
     assembler = Assembler([Provide(scoped_provider, scope="foo")])
 
     with assembler.scope("foo"):
-        await assembler.build(int)
+        assembler.build(int)
 
     with pytest.raises(NotInScopeError):
-        await assembler.build(int)
+        assembler.build(int)
 
 
 async def test_assembler_provider_multi_scope():
@@ -211,8 +211,8 @@ async def test_assembler_provider_multi_scope():
     )
 
     with assembler.scope("foo"):
-        await assembler.build(int)
+        assembler.build(int)
         with assembler.scope("bar"):
-            await assembler.build(int)
-            await assembler.build(str)
-        await assembler.build(int)
+            assembler.build(int)
+            assembler.build(str)
+        assembler.build(int)

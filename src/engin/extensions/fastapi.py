@@ -58,7 +58,7 @@ def Inject(interface: type[T]) -> Depends:
             assembler: Assembler = conn.app.state.assembler
         except AttributeError:
             raise RuntimeError("Assembler is not attached to Application state") from None
-        return await assembler.build(interface)
+        return assembler.build(interface)
 
     dep = Depends(inner)
     dep.__engin__ = True  # type: ignore[attr-defined]

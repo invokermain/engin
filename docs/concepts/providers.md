@@ -27,7 +27,7 @@ def string_factory() -> str:
 engin = Engin(Provide(string_factory))
 
 # construct the string
-a_string = await engin.assembler.build(str)
+a_string = engin.assembler.build(str)
 
 print(a_string)  # hello
 ```
@@ -69,7 +69,7 @@ def greeter_factory(greeting: str) -> Greeter:
 engin = Engin(Provide(string_factory), Provide(greeter_factory))
 
 # construct the Greeter
-greeter = await engin.assembler.build(Greeter)
+greeter = engin.assembler.build(Greeter)
 
 greeter.greet("Bob")  # hello, Bob!
 ```
@@ -98,10 +98,10 @@ def evil_factory() -> int:
 engin = Engin(Provide(string_factory), Provide(evil_factory))
 
 # this will not raise an error
-await engin.assembler.build(str)
+engin.assembler.build(str)
 
 # this will raise an error
-await engin.assembler.build(int)
+engin.assembler.build(int)
 ```
 
 
@@ -131,7 +131,7 @@ def other_animal_names_factory() -> list[str]:
 engin = Engin(Provide(animal_names_factory), Provide(other_animal_names_factory))
 
 # construct the list of strings
-animal_names = await engin.assembler.build(list[str])
+animal_names = engin.assembler.build(list[str])
 
 print(animal_names)  # ["cat", "dog", "horse", "cow"]
 ```
@@ -159,13 +159,13 @@ def name_factory() -> Annotated[str, "name"]:
 engin = Engin(Provide(greeting_factory), Provide(name_factory))
 
 # this will return "hello"
-await engin.assembler.build(Annotated[str, "greeting"])
+engin.assembler.build(Annotated[str, "greeting"])
 
 # this will return "Jelena"
-await engin.assembler.build(Annotated[str, "name"])
+engin.assembler.build(Annotated[str, "name"])
 
 # N.B. this will raise an error!
-await engin.assembler.build(str)
+engin.assembler.build(str)
 ```
 
 
@@ -183,7 +183,7 @@ from engin import Engin, Supply
 engin = Engin(Supply("hello"))
 
 # construct the string
-a_string = await engin.assembler.build(str)
+a_string = engin.assembler.build(str)
 
 print(a_string)  # hello
 ```

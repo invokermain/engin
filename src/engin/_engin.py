@@ -121,7 +121,7 @@ class Engin:
         """
         LOG.info("starting engin")
         assembled_invocations: list[AssembledDependency] = [
-            await self._assembler.assemble(invocation) for invocation in self._invocations
+            self._assembler.assemble(invocation) for invocation in self._invocations
         ]
 
         for invocation in assembled_invocations:
@@ -132,7 +132,7 @@ class Engin:
                 LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
                 return
 
-        lifecycle = await self._assembler.build(Lifecycle)
+        lifecycle = self._assembler.build(Lifecycle)
 
         try:
             for hook in lifecycle.list():
