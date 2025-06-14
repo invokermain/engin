@@ -1,7 +1,8 @@
 import asyncio
 import logging
+import threading
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Awaitable, Iterable, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
@@ -56,7 +57,7 @@ class Assembler:
             return "foo"
 
         a = Assembler([Provide(build_str)])
-        await a.build(str)
+        a.build(str)
         ```
     """
 
@@ -64,7 +65,6 @@ class Assembler:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._assembled_outputs: dict[TypeId, Any] = {}
-        self._lock = asyncio.Lock()
         self._graph_cache: dict[TypeId, set[Provide]] = defaultdict(set)
 
         for provider in providers:
@@ -81,7 +81,7 @@ class Assembler:
         multi_providers = [p for multi in self._multiproviders.values() for p in multi]
         return [*self._providers.values(), *multi_providers]
 
-    async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
+    def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
         """
         Assemble a dependency.
 
@@ -94,13 +94,14 @@ class Assembler:
         Returns:
             An AssembledDependency, which can be awaited to construct the final value.
         """
-        async with self._lock:
-            return AssembledDependency(
-                dependency=dependency,
-                bound_args=await self._bind_arguments(dependency.signature),
-            )
+        with ThreadedEventLoop() as loop:
+            bound_args = loop.await_(self._bind_arguments(dependency.signature))
+        return AssembledDependency(
+            dependency=dependency,
+            bound_args=bound_args,
+        )
 
-    async def build(self, type_: type[T]) -> T:
+    def build(self, type_: type[T]) -> T:
         """
         Build the type from Assembler's factories.
 
@@ -129,9 +130,10 @@ class Assembler:
             for provider in self._multiproviders[type_id]:
                 if provider.scope and provider.scope not in _get_scope():
                     raise NotInScopeError(provider=provider, scope_stack=_get_scope())
-                assembled_dependency = await self.assemble(provider)
+                assembled_dependency = self.assemble(provider)
                 try:
-                    out.extend(await assembled_dependency())
+                    with ThreadedEventLoop() as loop:
+                        out.extend(loop.await_(assembled_dependency(), timeout=10.0))
                 except Exception as err:
                     raise ProviderError(
                         provider=provider,
@@ -148,9 +150,10 @@ class Assembler:
             if provider.scope and provider.scope not in _get_scope():
                 raise NotInScopeError(provider=provider, scope_stack=_get_scope())
 
-            assembled_dependency = await self.assemble(provider)
+            assembled_dependency = self.assemble(provider)
             try:
-                value = await assembled_dependency()
+                with ThreadedEventLoop() as loop:
+                    value = loop.await_(assembled_dependency(), timeout=10.0)
             except Exception as err:
                 raise ProviderError(
                     provider=provider,
@@ -310,3 +313,25 @@ class _ScopeContextManager:
                 f"Exited scope '{popped}' is not the expected scope '{self._scope}'"
             )
         self._assembler._exit_scope(self._scope)
+
+
+class ThreadedEventLoop:
+    def __enter__(self) -> "ThreadedEventLoop":
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._loop.run_forever, daemon=False)
+        self._thread.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._thread.join()
+        self._loop.close()
+
+    def await_(self, coro: Awaitable[T], timeout: float | None = None) -> T:
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout)
