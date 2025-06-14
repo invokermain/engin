@@ -9,7 +9,7 @@ from itertools import chain
 from types import FrameType
 from typing import ClassVar
 
-from engin._assembler import AssembledDependency, Assembler
+from engin._assembler import Assembler
 from engin._dependency import Invoke, Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
@@ -120,8 +120,8 @@ class Engin:
         calling `stop`.
         """
         LOG.info("starting engin")
-        assembled_invocations: list[AssembledDependency] = [
-            await self._assembler.assemble(invocation) for invocation in self._invocations
+        assembled_invocations = [
+            self._assembler.assemble(invocation) for invocation in self._invocations
         ]
 
         for invocation in assembled_invocations:
@@ -132,7 +132,7 @@ class Engin:
                 LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
                 return
 
-        lifecycle = await self._assembler.build(Lifecycle)
+        lifecycle = self._assembler.build(Lifecycle)
 
         try:
             for hook in lifecycle.list():

@@ -8,7 +8,7 @@ def make_int() -> int:
     return 1
 
 
-def int_provider(val: int = 1, **kwargs) -> Provide[int]:
+def int_provider(val: int = 1, **kwargs) -> Provide[..., int]:
     def _make_int() -> int:
         return val
 

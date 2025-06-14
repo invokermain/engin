@@ -39,7 +39,7 @@ class ProviderError(AssemblerError):
 
     def __init__(
         self,
-        provider: Provide[Any],
+        provider: Provide[Any, Any],
         error_type: type[Exception],
         error_message: str,
     ) -> None:
@@ -60,7 +60,7 @@ class NotInScopeError(AssemblerError):
     Raised when a Provider is requested outside of its scope.
     """
 
-    def __init__(self, provider: Provide[Any], scope_stack: list[str]) -> None:
+    def __init__(self, provider: Provide[Any, Any], scope_stack: list[str]) -> None:
         self.provider = provider
         self.message = (
             f"provider '{provider.name}' was requested outside of its specified scope "
