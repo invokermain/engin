@@ -45,7 +45,7 @@ from httpx import AsyncClient
 
 def httpx_client(lifecycle: Lifecycle) -> AsyncClient:
     client = AsyncClient()
-    lifecycle.append(client)  # register the lifecycle tasks
+    lifecycle.append(client)  # register the lifecycle task
     return client
 ```
 

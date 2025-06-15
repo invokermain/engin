@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from asyncio import TaskGroup
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from inspect import iscoroutinefunction
@@ -63,6 +64,7 @@ class Lifecycle:
 
     def __init__(self) -> None:
         self._context_managers: list[AbstractAsyncContextManager] = []
+        self._supervised_tasks: list[Callable] = []
 
     def append(self, cm: _AnyContextManager, /) -> None:
         """
@@ -93,6 +95,16 @@ class Lifecycle:
             raise ValueError("At least one of on_start or on_stop must be provided")
         self.append(LifecycleHook(on_start=on_start, on_stop=on_stop))
 
+    def supervise(self, func: _ParameterlessCallable) -> None:
+        """
+        Supervise a long-running task, e.g. a background worker. If this task exits then
+        the Engin will stop.
+
+        Args:
+            func: a long-running task defined as a callable or awaitable.
+        """
+        self._supervised_tasks.append(func)
+
     def list(self) -> list[AbstractAsyncContextManager]:
         """
         List all the defined tasks.
@@ -100,7 +112,9 @@ class Lifecycle:
         Returns:
             A copy of the list of Lifecycle tasks.
         """
-        return self._context_managers[:]
+        out = self._context_managers[:]
+        out.append(TaskSupervisor(self._supervised_tasks))
+        return out
 
 
 class LifecycleHook(AbstractAsyncContextManager):
@@ -168,3 +182,26 @@ class _AExitSuppressingAsyncContextManager(AbstractAsyncContextManager):
     @staticmethod
     def _is_async_cm(cm: _AnyContextManager) -> TypeGuard[AbstractAsyncContextManager]:
         return hasattr(cm, "__aenter__")
+
+
+class TaskSupervisor(AbstractAsyncContextManager):
+    def __init__(self, supervisees: list[Callable]) -> None:
+        self._supervisees: list[Callable] = supervisees
+        self._task_group = TaskGroup()
+
+    async def __aenter__(self) -> None:
+        await self._task_group.__aenter__()
+        for supervisee in self._supervisees:
+            if iscoroutinefunction(supervisee):
+                self._task_group.create_task(supervisee())
+            else:
+                self._task_group.create_task(asyncio.to_thread(supervisee))
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
+        await self._task_group.__aexit__(exc_type, exc_value, traceback)

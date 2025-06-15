@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import signal
-from asyncio import Event, Task
+from asyncio import Event, Task, TaskGroup
 from collections import defaultdict
 from contextlib import AsyncExitStack
 from itertools import chain
