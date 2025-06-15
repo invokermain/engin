@@ -101,14 +101,14 @@ async def main() -> None:
             Provide(provide_g_many),
         ]
     )
-    await assembler.build(G)
+    assembler.build(G)
 
     # reset cache
     assembler._assembled_outputs = {}
 
-    await assembler.build(list[Any])
+    assembler.build(list[Any])
 
 
 @pytest.mark.benchmark(min_rounds=10000, warmup="on")
-def test_assembler_benchmark(aio_benchmark):
-    aio_benchmark(main)
+def test_assembler_benchmark(benchmark):
+    benchmark(main)

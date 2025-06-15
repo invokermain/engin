@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
@@ -6,9 +5,9 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from inspect import BoundArguments, Signature
 from types import TracebackType
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast, overload
 
-from engin._dependency import Dependency, Provide, Supply
+from engin._dependency import Dependency, Invoke, Provide, Supply
 from engin._type_utils import TypeId
 from engin.exceptions import NotInScopeError, ProviderError
 
@@ -25,17 +24,36 @@ def _get_scope() -> list[str]:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class AssembledDependency(Generic[T]):
+class AssembledProvider(Generic[T]):
     """
-    An AssembledDependency can be called to construct the result.
+    An AssembledProvider can be called to construct the result.
     """
 
-    dependency: Dependency[Any, T]
+    dependency: Provide[Any, T]
+    bound_args: BoundArguments
+
+    def __call__(self) -> T:
+        """
+        Execute the Provider.
+
+        Returns:
+            The constructed value.
+        """
+        return self.dependency(*self.bound_args.args, **self.bound_args.kwargs)
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class AssembledInvocation(Generic[T]):
+    """
+    An AssembledInvocation can be called to construct the result.
+    """
+
+    dependency: Invoke[Any, T]
     bound_args: BoundArguments
 
     async def __call__(self) -> T:
         """
-        Construct the dependency.
+        Execute the Invocation.
 
         Returns:
             The constructed value.
@@ -56,7 +74,7 @@ class Assembler:
             return "foo"
 
         a = Assembler([Provide(build_str)])
-        await a.build(str)
+        a.build(str)
         ```
     """
 
@@ -64,7 +82,6 @@ class Assembler:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._assembled_outputs: dict[TypeId, Any] = {}
-        self._lock = asyncio.Lock()
         self._graph_cache: dict[TypeId, set[Provide]] = defaultdict(set)
 
         for provider in providers:
@@ -77,11 +94,19 @@ class Assembler:
                 self._multiproviders[type_id].append(provider)
 
     @property
-    def providers(self) -> Sequence[Provide[Any]]:
+    def providers(self) -> Sequence[Provide[Any, Any]]:
         multi_providers = [p for multi in self._multiproviders.values() for p in multi]
         return [*self._providers.values(), *multi_providers]
 
-    async def assemble(self, dependency: Dependency[Any, T]) -> AssembledDependency[T]:
+    @overload
+    def assemble(self, dependency: Provide[Any, T]) -> AssembledProvider[T]: ...
+
+    @overload
+    def assemble(self, dependency: Invoke[Any, T]) -> AssembledInvocation[T]: ...
+
+    def assemble(
+        self, dependency: Dependency[Any, T]
+    ) -> AssembledProvider[T] | AssembledInvocation[T]:
         """
         Assemble a dependency.
 
@@ -92,15 +117,24 @@ class Assembler:
             dependency: the Dependency to assemble.
 
         Returns:
-            An AssembledDependency, which can be awaited to construct the final value.
+            An AssembledProvider, which can be called to construct the final value, or
+            an AssembledInvocation, which can be awaited.
         """
-        async with self._lock:
-            return AssembledDependency(
+        bound_args = self._bind_arguments(dependency.signature)
+        if isinstance(dependency, Provide):
+            return AssembledProvider(
                 dependency=dependency,
-                bound_args=await self._bind_arguments(dependency.signature),
+                bound_args=bound_args,
             )
+        elif isinstance(dependency, Invoke):
+            return AssembledInvocation(
+                dependency=dependency,
+                bound_args=bound_args,
+            )
+        else:
+            raise TypeError("Dependency is not an instance of Provide or Invoke")
 
-    async def build(self, type_: type[T]) -> T:
+    def build(self, type_: type[T]) -> T:
         """
         Build the type from Assembler's factories.
 
@@ -129,9 +163,9 @@ class Assembler:
             for provider in self._multiproviders[type_id]:
                 if provider.scope and provider.scope not in _get_scope():
                     raise NotInScopeError(provider=provider, scope_stack=_get_scope())
-                assembled_dependency = await self.assemble(provider)
+                assembled_dependency = self.assemble(provider)
                 try:
-                    out.extend(await assembled_dependency())
+                    out.extend(assembled_dependency())
                 except Exception as err:
                     raise ProviderError(
                         provider=provider,
@@ -148,9 +182,9 @@ class Assembler:
             if provider.scope and provider.scope not in _get_scope():
                 raise NotInScopeError(provider=provider, scope_stack=_get_scope())
 
-            assembled_dependency = await self.assemble(provider)
+            assembled_dependency = self.assemble(provider)
             try:
-                value = await assembled_dependency()
+                value = assembled_dependency()
             except Exception as err:
                 raise ProviderError(
                     provider=provider,
@@ -158,7 +192,7 @@ class Assembler:
                     error_message=str(err),
                 ) from err
             self._assembled_outputs[type_id] = value
-            return value  # type: ignore[return-value]
+            return value  # type: ignore[no-any-return]
 
     def has(self, type_: type[T]) -> bool:
         """
@@ -244,7 +278,7 @@ class Assembler:
 
         return resolved_providers
 
-    async def _satisfy(self, target: TypeId) -> None:
+    def _satisfy(self, target: TypeId) -> None:
         for provider in self._resolve_providers(target, set()):
             if (
                 not provider.is_multiprovider
@@ -253,9 +287,9 @@ class Assembler:
                 continue
             type_id = provider.return_type_id
 
-            bound_args = await self._bind_arguments(provider.signature)
+            bound_args = self._bind_arguments(provider.signature)
             try:
-                value = await provider(*bound_args.args, **bound_args.kwargs)
+                value = provider(*bound_args.args, **bound_args.kwargs)
             except Exception as err:
                 raise ProviderError(
                     provider=provider, error_type=type(err), error_message=str(err)
@@ -269,7 +303,7 @@ class Assembler:
             else:
                 self._assembled_outputs[type_id] = value
 
-    async def _bind_arguments(self, signature: Signature) -> BoundArguments:
+    def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
         kwargs = {}
         for param_name, param in signature.parameters.items():
@@ -278,7 +312,7 @@ class Assembler:
                 continue
             param_key = TypeId.from_type(param.annotation)
             if param_key not in self._assembled_outputs:
-                await self._satisfy(param_key)
+                self._satisfy(param_key)
             val = self._assembled_outputs[param_key]
             if param.kind == param.POSITIONAL_ONLY:
                 args.append(val)

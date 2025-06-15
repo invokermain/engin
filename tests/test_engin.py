@@ -95,7 +95,7 @@ async def test_engin_with_lifecycle():
     state = 0
 
     @asynccontextmanager
-    async def lifespan_task() -> Iterable[None]:
+    def lifespan_task() -> Iterable[None]:
         nonlocal state
         state = 1
         yield
@@ -117,7 +117,7 @@ async def test_engin_with_lifecycle_using_run():
     state = 0
 
     @asynccontextmanager
-    async def lifespan_task() -> Iterable[None]:
+    def lifespan_task() -> Iterable[None]:
         nonlocal state
         state = 1
         yield

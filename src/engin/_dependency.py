@@ -1,8 +1,11 @@
+import asyncio
 import inspect
+import threading
 import typing
 from abc import ABC
 from collections.abc import Awaitable, Callable
 from inspect import Parameter, Signature, isclass, iscoroutinefunction
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -88,14 +91,8 @@ class Dependency(ABC, Option, Generic[P, T]):
     def signature(self) -> Signature:
         return self._signature
 
-    async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
-        if self._is_async:
-            return await cast("Awaitable[T]", self._func(*args, **kwargs))
-        else:
-            return self._func(*args, **kwargs)
 
-
-class Invoke(Dependency):
+class Invoke(Dependency[P, T]):
     """
     Marks a function as an Invocation.
 
@@ -122,6 +119,12 @@ class Invoke(Dependency):
 
     def __str__(self) -> str:
         return f"Invoke({self.name})"
+
+    async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        if self._is_async:
+            return await cast("Awaitable[T]", self._func(*args, **kwargs))
+        else:
+            return self._func(*args, **kwargs)
 
 
 class Entrypoint(Invoke):
@@ -151,7 +154,7 @@ class Entrypoint(Invoke):
         return f"Entrypoint({TypeId.from_type(self._type)})"
 
 
-class Provide(Dependency[Any, T]):
+class Provide(Dependency[P, T]):
     def __init__(
         self,
         builder: Func[P, T],
@@ -239,6 +242,13 @@ class Provide(Dependency[Any, T]):
 
         engin._providers[type_id] = self
 
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        if self._is_async:
+            with ThreadedEventLoop() as loop:
+                return loop.await_(cast("Awaitable[T]", self._func(*args, **kwargs)))
+        else:
+            return self._func(*args, **kwargs)
+
     def __hash__(self) -> int:
         return hash(self.return_type_id)
 
@@ -293,3 +303,25 @@ class Supply(Provide, Generic[T]):
 
     def __str__(self) -> str:
         return f"Supply({self.return_type_id})"
+
+
+class ThreadedEventLoop:
+    def __enter__(self) -> "ThreadedEventLoop":
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._loop.run_forever, daemon=False)
+        self._thread.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> None:
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._thread.join()
+        self._loop.close()
+
+    def await_(self, coro: Awaitable[T], timeout: float | None = None) -> T:
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout)

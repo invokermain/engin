@@ -51,7 +51,7 @@ class ASGIEngin(Engin, ASGIType):
             await self._asgi_app(scope, receive, send)
 
     async def _startup(self) -> None:
-        self._asgi_app = await self._assembler.build(self._asgi_type)
+        self._asgi_app = self._assembler.build(self._asgi_type)
         await self.start()
 
     def graph(self) -> list[Node]:
