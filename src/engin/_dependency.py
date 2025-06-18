@@ -33,7 +33,7 @@ class Dependency(ABC, Option, Generic[P, T]):
     def __init__(self, func: Func[P, T]) -> None:
         self._func = func
         self._is_async = iscoroutinefunction(func)
-        self._signature = inspect.signature(self._func)
+        self._signature = inspect.signature(self._func, eval_str=True)
         self._block_name: str | None = None
 
         source_frame = get_first_external_frame()
