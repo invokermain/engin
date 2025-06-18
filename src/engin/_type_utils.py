@@ -33,8 +33,8 @@ class TypeId:
             return TypeId(type=type_, multi=False)
 
     def __str__(self) -> str:
-        module = self.type.__module__
-        out = f"{module}." if module not in _implict_modules else ""
+        module = getattr(self.type, "__module__", None)
+        out = f"{module}." if module and module not in _implict_modules else ""
         out += _args_to_str(self.type)
         if self.multi:
             out += "[]"

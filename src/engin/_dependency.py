@@ -154,24 +154,24 @@ class Entrypoint(Invoke):
 class Provide(Dependency[Any, T]):
     def __init__(
         self,
-        builder: Func[P, T],
+        factory: Func[P, T],
         *,
         scope: str | None = None,
         as_type: type | None = None,
         override: bool = False,
     ) -> None:
         """
-        Provide a type via a builder or factory function.
+        Provide a type via a factory function.
 
         Args:
-            builder: the builder function that returns the type.
+            factory: the factory function that returns the type.
             scope: (optional) associate this provider with a specific scope.
             as_type: (optional) allows you to explicitly specify the provided type, e.g.
                 to type erase a concrete type, or to provide a mock implementation.
             override: (optional) allow this provider to override other providers for the
                 same type from the same package.
         """
-        super().__init__(func=builder)
+        super().__init__(func=factory)
         self._scope = scope
         self._override = override
         self._explicit_type = as_type
@@ -231,9 +231,9 @@ class Provide(Dependency[Any, T]):
         # overwriting a dependency from the same package must be explicit
         if is_same_package and not self._override:
             msg = (
-                f"Provider '{self.name}' is implicitly overriding "
-                f"'{existing_provider.name}', if this is intended specify "
-                "`override=True` for the overriding Provider"
+                f"{self} from '{self._source_frame}' is implicitly overriding "
+                f"{existing_provider} from '{existing_provider.source_module}', if this "
+                "is intentional specify `override=True` for the overriding Provider"
             )
             raise RuntimeError(msg)
 
@@ -243,7 +243,7 @@ class Provide(Dependency[Any, T]):
         return hash(self.return_type_id)
 
     def __str__(self) -> str:
-        return f"Provide({self.return_type_id})"
+        return f"Provide(factory={self.func_name}, type={self._return_type_id})"
 
     def _resolve_return_type(self) -> type[T]:
         if self._explicit_type is not None:
@@ -279,7 +279,14 @@ class Supply(Provide, Generic[T]):
               same type from the same package.
         """
         self._value = value
-        super().__init__(builder=self._get_val, as_type=as_type, override=override)
+        super().__init__(factory=self._get_val, as_type=as_type, override=override)
+
+    @property
+    def name(self) -> str:
+        if self._block_name:
+            return f"{self._block_name}.supply"
+        else:
+            return f"{self._source_frame}.supply"
 
     def _resolve_return_type(self) -> type[T]:
         if self._explicit_type is not None:
@@ -292,4 +299,4 @@ class Supply(Provide, Generic[T]):
         return self._value
 
     def __str__(self) -> str:
-        return f"Supply({self.return_type_id})"
+        return f"Supply(value={self._value}, type={self.return_type_id})"

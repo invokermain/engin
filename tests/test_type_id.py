@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Annotated, TypeAlias
 
-from engin._type_utils import TypeId
+from engin import TypeId
 
 
 def test_type_id_of_int():

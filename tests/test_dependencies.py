@@ -90,9 +90,22 @@ def test_provider_cannot_depend_on_self():
         Provide(invalid_provider_2)
 
 
-def test_provides_implicit_overrides():
+def test_provides_implicit_overrides_providers():
     provide_a = int_provider()
     provide_b = int_provider()
+
+    engin = Mock()
+    engin._providers = {}
+
+    provide_a.apply(engin)
+
+    with pytest.raises(RuntimeError, match="implicit"):
+        provide_b.apply(engin)
+
+
+def test_provides_implicit_overrides_supply():
+    provide_a = Supply(3)
+    provide_b = Supply(4)
 
     engin = Mock()
     engin._providers = {}
