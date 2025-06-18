@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1747126673329,
+  "lastUpdate": 1750234369245,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -209,6 +209,36 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00005445433998542916",
             "extra": "mean: 958.7515485999376 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "="
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "fdb98ec717102ed90e2523d79421a885fc44a9a8",
+          "message": "chore: release v0.0.20",
+          "timestamp": "2025-06-18T09:12:10+01:00",
+          "tree_id": "3bc2ce9ed22256959ed1adcde0948fa9c0990331",
+          "url": "https://github.com/invokermain/engin/commit/fdb98ec717102ed90e2523d79421a885fc44a9a8"
+        },
+        "date": 1750234368939,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1005.2779197851545,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00007796138703814704",
+            "extra": "mean: 994.7497903999697 usec\nrounds: 10000"
           }
         ]
       }
