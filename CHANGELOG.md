@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.20] - 2025-06-18
+
+### Changed
+
+- Improved string representation of Provide & Supply to make error messages more helpful.
+
+### Fixed
+
+- Engin now correctly supports postponed evaluation of annotations, e.g. `x: "MyType"` in
+  a factory function.
+
+
 ## [0.0.19] - 2025-04-27
 
 ### Added
