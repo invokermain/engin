@@ -9,11 +9,15 @@ from itertools import chain
 from types import FrameType
 from typing import ClassVar
 
+from anyio import CancelScope, create_task_group, get_cancelled_exc_class
+
 from engin._assembler import AssembledDependency, Assembler
 from engin._dependency import Invoke, Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._option import Option
+from engin._shutdown import ShutdownSwitch
+from engin._supervisor import Supervisor
 from engin._type_utils import TypeId
 
 _OS_IS_WINDOWS = os.name == "nt"
@@ -38,10 +42,10 @@ class Engin:
     1. The Engin assembles all Invocations. Only Providers that are required to satisfy
        the Invoke options parameters are assembled.
     2. All Invocations are run sequentially in the order they were passed in to the Engin.
-    3. Any Lifecycle Startup defined by a provider that was assembled in order to satisfy
-       the constructors is ran.
-    4. The Engin waits for a stop signal, i.e. SIGINT or SIGTERM.
-    5. Any Lifecyce Shutdown task is ran, in the reverse order to the Startup order.
+    3. Lifecycle Startup tasks registered by assembled dependencies are run sequentially.
+    4. The Engin waits for a stop signal, i.e. SIGINT or SIGTERM, or for something to
+       set the ShutdownSwitch event.
+    5. Lifecyce Shutdown tasks are run in the reverse order to the Startup order.
 
     Examples:
         ```python
@@ -49,11 +53,13 @@ class Engin:
 
         from httpx import AsyncClient
 
-        from engin import Engin, Invoke, Provide
+        from engin import Engin, Invoke, Lifecycle, Provide
 
 
-        def httpx_client() -> AsyncClient:
-            return AsyncClient()
+        def httpx_client(lifecycle: Lifecycle) -> AsyncClient:
+            client = AsyncClient()
+            lifecycle.append(client)
+            return client
 
 
         async def main(http_client: AsyncClient) -> None:
@@ -65,7 +71,7 @@ class Engin:
         ```
     """
 
-    _LIB_OPTIONS: ClassVar[list[Option]] = [Provide(Lifecycle)]
+    _LIB_OPTIONS: ClassVar[list[Option]] = [Provide(Lifecycle), Provide(Supervisor)]
 
     def __init__(self, *options: Option) -> None:
         """
@@ -77,14 +83,16 @@ class Engin:
         Args:
             *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
         """
-        self._stop_requested_event = Event()
+        self._stop_requested_event = ShutdownSwitch()
         self._stop_complete_event = Event()
         self._exit_stack: AsyncExitStack = AsyncExitStack()
         self._shutdown_task: Task | None = None
         self._run_task: Task | None = None
+        self._assembler = Assembler([])
 
         self._providers: dict[TypeId, Provide] = {
-            TypeId.from_type(Engin): Supply(self, as_type=Engin)
+            TypeId.from_type(Assembler): Supply(self._assembler),
+            TypeId.from_type(ShutdownSwitch): Supply(self._stop_requested_event),
         }
         self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
         self._invocations: list[Invoke] = []
@@ -94,7 +102,9 @@ class Engin:
             option.apply(self)
 
         multi_providers = [p for multi in self._multiproviders.values() for p in multi]
-        self._assembler = Assembler(chain(self._providers.values(), multi_providers))
+
+        for provider in chain(self._providers.values(), multi_providers):
+            self._assembler.add(provider)
 
     @property
     def assembler(self) -> Assembler:
@@ -105,11 +115,19 @@ class Engin:
         Run the engin.
 
         The engin will run until it is stopped via an external signal (i.e. SIGTERM or
-        SIGINT) or the `stop` method is called on the engin.
+        SIGINT), the `stop` method is called on the engin, or a lifecycle task errors.
         """
         await self.start()
-        self._run_task = asyncio.create_task(_wait_for_stop_signal(self._stop_requested_event))
-        await self._stop_requested_event.wait()
+        if self._shutdown_task:
+            self._shutdown_task.cancel("redundant")
+        async with create_task_group() as tg:
+            tg.start_soon(_stop_engin_on_signal, self._stop_requested_event)
+            try:
+                await self._stop_requested_event.wait()
+                await self._shutdown()
+            except get_cancelled_exc_class():
+                with CancelScope(shield=True):
+                    await self._shutdown()
 
     async def start(self) -> None:
         """
@@ -133,6 +151,10 @@ class Engin:
                 return
 
         lifecycle = await self._assembler.build(Lifecycle)
+        supervisor = await self._assembler.build(Supervisor)
+
+        if not supervisor.empty:
+            lifecycle.append(supervisor)
 
         try:
             for hook in lifecycle.list():
@@ -178,7 +200,10 @@ class Engin:
         await self._shutdown()
 
 
-async def _wait_for_stop_signal(stop_requested_event: Event) -> None:
+async def _stop_engin_on_signal(stop_requested_event: Event) -> None:
+    """
+    A task that waits for a stop signal (SIGINT/SIGTERM) and notifies the given event.
+    """
     try:
         # try to gracefully handle sigint/sigterm
         if not _OS_IS_WINDOWS:
