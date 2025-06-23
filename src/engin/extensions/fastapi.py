@@ -24,12 +24,12 @@ except ImportError as err:
 __all__ = ["APIRouteDependency", "FastAPIEngin", "Inject"]
 
 
-def _attach_assembler(app: FastAPI, engin: Engin) -> None:
+def _attach_assembler(app: FastAPI, assembler: Assembler) -> None:
     """
     An invocation that attaches the Engin's Assembler to the FastAPI application, enabling
     the Inject marker.
     """
-    app.state.assembler = engin.assembler
+    app.state.assembler = assembler
 
 
 class FastAPIEngin(ASGIEngin):

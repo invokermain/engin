@@ -1,12 +1,16 @@
 [project]
 name = "engin"
-version = "0.0.20"
+version = "0.1.a1"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 keywords = ["Dependency Injection", "Application Framework"]
-dependencies = []
+dependencies = [
+    "anyio>=4",
+    # backwards compatability for exception group in 3.10
+    "exceptiongroup>=1",
+]
 
 [project.optional-dependencies]
 cli = ["typer>=0.15"]
@@ -79,7 +83,7 @@ ignore = [
 
 
 [tool.pytest.ini_options]
-log_cli = false
+log_cli = true
 log_cli_level = "DEBUG"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
