@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
@@ -32,6 +33,13 @@ async def test_error_in_startup():
     engin = Engin(Invoke(a), Invoke(b))
 
     await engin.start()
+    assert not B_LIFECYCLE_STATE
+
+
+async def test_error_in_startup_handled_when_run():
+    engin = Engin(Invoke(a), Invoke(b))
+
+    await asyncio.wait_for(engin.run(), timeout=0.5)
     assert not B_LIFECYCLE_STATE
 
 

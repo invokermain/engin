@@ -2,7 +2,7 @@
 
 # Engin 🏎️
 
-Engin is a zero-dependency application framework for modern Python.
+Engin is a lightweight application framework for modern Python.
 
 **Documentation**: https://engin.readthedocs.io/
 
