@@ -1,6 +1,6 @@
 # Introduction
 
-Engin is a zero-dependency application framework for modern Python.
+Engin is a lightweight application framework for modern Python.
 
 Engin is inspired by [Uber's Fx framework for Go](https://github.com/uber-go/fx) and the
 [Injector framework for Python](https://github.com/python-injector/injector).
