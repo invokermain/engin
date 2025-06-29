@@ -1,33 +1,38 @@
-[![codecov](https://codecov.io/gh/invokermain/engin/graph/badge.svg?token=4PJOIMV6IB)](https://codecov.io/gh/invokermain/engin)
-
 # Engin 🏎️
 
-Engin is a lightweight application framework for modern Python.
+[![codecov](https://codecov.io/gh/invokermain/engin/graph/badge.svg?token=4PJOIMV6IB)](https://codecov.io/gh/invokermain/engin)
 
-**Documentation**: https://engin.readthedocs.io/
+---
 
-## Features ✨
+**Documentation**: [https://engin.readthedocs.io/](https://engin.readthedocs.io/)
 
-- **Dependency Injection** - Engin includes a fully-featured Dependency Injection system,
-  powered by type hints.
-- **Lifecycle Management** - Engin provides a simple & portable approach for attaching
-  startup and shutdown tasks to the application's lifecycle.
-- **Code Reuse** - Engin's modular components, called Blocks, work great as distributed
-  packages allowing zero boiler-plate code reuse across multiple applications. Perfect for
-  maintaining many services across your organisation.
-- **Ecosystem Compatability** - Engin ships with integrations for popular frameworks that
-  provide their own Dependency Injection, for example FastAPI, allowing you to integrate
-  Engin into existing code bases incrementally.
-- **Async Native**: Engin is an async framework, meaning first class support for async
-  dependencies. However Engin will happily run synchronous code as well.
+**Source Code**: [https://github.com/invokermain/engin](https://github.com/invokermain/engin)
+
+---
+
+Engin is a lightweight application framework powered by dependency injection, it helps
+you build both large monoliths and multiple microservices.
+
+
+## Features
+
+The Engin framework includes:
+
+- A fully-featured dependency injection system.
+- A robust application runtime with lifecycle hooks and supervised background tasks.
+- Zero boiler-plate code reuse across multiple applications.
+- Integrations for other frameworks such as FastAPI.
+- Full async support.
+- CLI commands to aid local development.
+
 
 ## Installation
 
 Engin is available on PyPI, install using your favourite dependency manager:
 
-- **pip**:`pip install engin`
-- **poetry**: `poetry add engin`
-- **uv**: `uv add engin`
+- `pip install engin`
+- `poetry add engin`
+- `uv add engin`
 
 ## Getting Started
 

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Supervisor class which can safely supervise long running tasks.
 
+### Changed
+
+- `ASGIEngin.run()` now raises an error to prevent incorrect usage.
+
 
 ## [0.0.20] - 2025-06-18
 

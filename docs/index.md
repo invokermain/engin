@@ -1,21 +1,62 @@
-# Introduction
+# Engin 🏎️
 
-Engin is a lightweight application framework for modern Python.
+Engin is a lightweight application framework powered by dependency injection, it helps
+you build both large monoliths and multiple microservices.
 
-Engin is inspired by [Uber's Fx framework for Go](https://github.com/uber-go/fx) and the
-[Injector framework for Python](https://github.com/python-injector/injector).
 
-## Why use Engin?
+## Features
 
-- **Dependency Injection** - Engin includes a fully-featured Dependency Injection system,
-  powered by type hints.
-- **Applicaton Management** - Engin can run your whole application from start to end with
-  a simple call to `run()` including managing lifecycle startup and shutdown tasks. 
-- **Code Reuse** - Engin's modular components, called Blocks, work great as distributed
-  packages allowing zero boiler-plate code reuse across multiple applications. Perfect for
-  maintaining many services across your organisation.
-- **Ecosystem Compatability** - Engin ships with integrations for popular frameworks that
-  provide their own Dependency Injection, such as FastAPI, allowing you to integrate
-  Engin into existing code bases incrementally.
-- **Async Native**: Engin is an async framework, meaning first class support for async
-  dependencies and applications, but can easily run synchronous code as well.
+The Engin framework includes:
+
+- A fully-featured dependency injection system.
+- A robust application runtime with lifecycle hooks and supervised background tasks.
+- Zero boiler-plate code reuse across multiple applications.
+- Integrations for other frameworks such as FastAPI.
+- Full async support.
+- CLI commands to aid local development.
+
+
+## Installation
+
+=== "uv"
+
+    ```shell
+    uv add engin
+    ```
+
+=== "poetry"
+
+    ```shell
+    poetry add engin
+    ```
+
+=== "pip"
+
+    ```shell
+    pip install engin
+    ```
+
+## Getting Started
+
+A minimal example:
+
+```python
+import asyncio
+
+from httpx import AsyncClient
+
+from engin import Engin, Invoke, Provide
+
+
+def httpx_client() -> AsyncClient:
+    return AsyncClient()
+
+
+async def main(http_client: AsyncClient) -> None:
+    print(await http_client.get("https://httpbin.org/get"))
+
+engin = Engin(Provide(httpx_client), Invoke(main))
+
+asyncio.run(engin.run())
+```
+

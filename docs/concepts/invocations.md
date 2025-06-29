@@ -3,8 +3,8 @@
 Invocations define the behaviour of your application, therefore without any Invocations
 your application will not do anything.
 
-Like providers invocations are functions that take one or more dependencies as parameters,
-and they should always return None as the return value will not used by the Engin.
+Like providers, invocations are functions that take one or more dependencies as
+parameters, but they should always return None as the return value will not used by Engin.
 
 As part of the Engin's startup, all declared invocations will be called sequentially in
 the order they were registered.
@@ -13,7 +13,7 @@ Invocations can be used to define behaviour in two ways.
 
 **Implicit: Provider Lifecycle**
 
-Invocations are always called therefore their dependencies are always assembled. This
+Invocations are always called and therefore their dependencies are always assembled. This
 means that any providers with lifecycles will register their lifecycles with the
 application if directly or indirectly used by an invocation.
 
