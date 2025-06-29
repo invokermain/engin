@@ -12,6 +12,13 @@ async def test_engin_signal_handling():
         tg.create_task(engin.run())
         # give it time to startup
         await asyncio.sleep(0.1)
+
         assert engin._state == _EnginState.RUNNING
-        await engin.stop()
+
+        # closest thing to emulating the actual signal with subprocesses
+        engin._stop_requested_event.set()
+
+        # give it time to shutdown
+        await asyncio.sleep(0.1)
+
         assert engin._state == _EnginState.SHUTDOWN

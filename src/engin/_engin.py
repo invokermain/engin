@@ -163,6 +163,9 @@ class Engin:
             except get_cancelled_exc_class():
                 with CancelScope(shield=True):
                     await self._shutdown()
+                # warning: we do not reraise the cancellation here, this is ok
+                # as Engin.run() should be the outermost task and the cancellation
+                # has been handled gracefully.
 
     async def start(self) -> None:
         """
@@ -241,32 +244,29 @@ async def _stop_engin_on_signal(stop_requested_event: Event) -> None:
     """
     A task that waits for a stop signal (SIGINT/SIGTERM) and notifies the given event.
     """
-    try:
-        # try to gracefully handle sigint/sigterm
-        if not _OS_IS_WINDOWS:
-            loop = asyncio.get_running_loop()
-            for signame in (signal.SIGINT, signal.SIGTERM):
-                loop.add_signal_handler(signame, stop_requested_event.set)
+    # try to gracefully handle sigint/sigterm
+    if not _OS_IS_WINDOWS:
+        loop = asyncio.get_running_loop()
+        for signame in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(signame, stop_requested_event.set)
 
-            await stop_requested_event.wait()
-        else:
-            should_stop = False
+        await stop_requested_event.wait()
+    else:
+        should_stop = False
 
-            # windows does not support signal_handlers, so this is the workaround
-            def ctrlc_handler(sig: int, frame: FrameType | None) -> None:
-                nonlocal should_stop
-                if should_stop:
-                    raise KeyboardInterrupt("Forced keyboard interrupt")
-                should_stop = True
+        # windows does not support signal_handlers, so this is the workaround
+        def ctrlc_handler(sig: int, frame: FrameType | None) -> None:
+            nonlocal should_stop
+            if should_stop:
+                raise KeyboardInterrupt("Forced keyboard interrupt")
+            should_stop = True
 
-            signal.signal(signal.SIGINT, ctrlc_handler)
+        signal.signal(signal.SIGINT, ctrlc_handler)
 
-            while not should_stop:
-                # In case engin is stopped via external `stop` call.
-                if stop_requested_event.is_set():
-                    return
-                await asyncio.sleep(0.1)
+        while not should_stop:
+            # In case engin is stopped via external `stop` call.
+            if stop_requested_event.is_set():
+                return
+            await asyncio.sleep(0.1)
 
-            stop_requested_event.set()
-    except asyncio.CancelledError:
-        pass
+        stop_requested_event.set()

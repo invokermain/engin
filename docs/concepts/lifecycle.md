@@ -1,5 +1,3 @@
-from contextlib import asynccontextmanager
-
 # Lifecycle
 
 Certain types of object naturally have some form of startup and shutdown behaviour

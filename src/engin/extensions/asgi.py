@@ -9,6 +9,7 @@ from engin import Engin, Entrypoint, Option, Supply
 __all__ = ["ASGIEngin", "ASGIType", "engin_to_lifespan"]
 
 from engin._graph import DependencyGrapher, Node
+from engin.exceptions import EnginError
 
 _Scope: TypeAlias = MutableMapping[str, Any]
 _Message: TypeAlias = MutableMapping[str, Any]
@@ -57,6 +58,12 @@ class ASGIEngin(Engin, ASGIType):
     def graph(self) -> list[Node]:
         grapher = DependencyGrapher({**self._providers, **self._multiproviders})
         return grapher.resolve([Entrypoint(self._asgi_type), *self._invocations])
+
+    async def run(self) -> None:
+        raise EnginError(
+            "ASGIEngin's cannot be run directly as they should be run via an "
+            "ASGI web server instead (e.g. uvicorn)."
+        )
 
 
 class _Rereceive:
