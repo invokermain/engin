@@ -15,6 +15,14 @@ async def happy_task():
     await asyncio.sleep(1)
 
 
+async def endless_task():
+    await asyncio.sleep(999)
+
+
+async def block_task():
+    await asyncio.sleep(999)
+
+
 @dataclass
 class ClassHappyTask:
     async def run(self) -> None:
@@ -113,3 +121,13 @@ async def test_supervisor():
     assert supervisor._tasks[2].last_exception is None
 
     assert shutdown_event.is_set()
+
+
+async def test_supervisor_is_cancellable():
+    shutdown_event = ShutdownSwitch()
+    supervisor = Supervisor(shutdown_event)
+
+    supervisor.supervise(endless_task)
+
+    await supervisor.__aenter__()
+    await asyncio.wait_for(supervisor.__aexit__(None, None, None), 0.1)

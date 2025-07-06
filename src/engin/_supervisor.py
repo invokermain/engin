@@ -137,5 +137,8 @@ class Supervisor:
         if not self._tasks:
             return
 
+        if self._task_group:
+            self._task_group.cancel_scope.cancel()
+
         if self._exit_stack:
             await self._exit_stack.__aexit__(exc_type, exc_value, traceback)
