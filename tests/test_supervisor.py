@@ -3,7 +3,7 @@ import contextlib
 from asyncio import CancelledError
 from dataclasses import dataclass
 
-from engin import OnException, ShutdownSwitch, Supervisor
+from engin import OnException, Supervisor
 
 
 async def delayed_error_task():
@@ -30,30 +30,15 @@ class ClassHappyTask:
 
 
 async def test_empty_supervisor():
-    shutdown_event = ShutdownSwitch()
-    supervisor = Supervisor(shutdown_event)
+    supervisor = Supervisor()
 
     with contextlib.suppress(CancelledError):
         async with supervisor:
             await asyncio.sleep(0.1)
-
-
-async def test_supervisor_on_exception_shutdown():
-    shutdown_event = ShutdownSwitch()
-    supervisor = Supervisor(shutdown_event)
-
-    supervisor.supervise(delayed_error_task, on_exception=OnException.SHUTDOWN)
-
-    with contextlib.suppress(CancelledError):
-        async with supervisor:
-            await asyncio.sleep(0.1)
-
-    assert shutdown_event.is_set()
 
 
 async def test_supervisor_on_exception_retry():
-    shutdown_event = ShutdownSwitch()
-    supervisor = Supervisor(shutdown_event)
+    supervisor = Supervisor()
     attempt = 0
 
     async def retry_task():
@@ -74,8 +59,7 @@ async def test_supervisor_on_exception_retry():
 
 
 async def test_supervisor_on_exception_ignore():
-    shutdown_event = ShutdownSwitch()
-    supervisor = Supervisor(shutdown_event)
+    supervisor = Supervisor()
 
     async def error_task():
         raise RuntimeError("Process errored")
@@ -97,8 +81,7 @@ async def test_supervisor_on_exception_ignore():
 
 
 async def test_supervisor():
-    shutdown_event = ShutdownSwitch()
-    supervisor = Supervisor(shutdown_event)
+    supervisor = Supervisor()
 
     supervisor.supervise(delayed_error_task)
     supervisor.supervise(happy_task)
@@ -120,12 +103,9 @@ async def test_supervisor():
     assert not supervisor._tasks[2].complete
     assert supervisor._tasks[2].last_exception is None
 
-    assert shutdown_event.is_set()
-
 
 async def test_supervisor_is_cancellable():
-    shutdown_event = ShutdownSwitch()
-    supervisor = Supervisor(shutdown_event)
+    supervisor = Supervisor()
 
     supervisor.supervise(endless_task)
 

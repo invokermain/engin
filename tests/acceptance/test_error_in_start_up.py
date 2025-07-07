@@ -29,13 +29,6 @@ def b(lifecycle: Lifecycle) -> None:
     lifecycle.append(_b_startup())
 
 
-async def test_error_in_startup():
-    engin = Engin(Invoke(a), Invoke(b))
-
-    await engin.start()
-    assert not B_LIFECYCLE_STATE
-
-
 async def test_error_in_startup_handled_when_run():
     engin = Engin(Invoke(a), Invoke(b))
 
@@ -49,5 +42,5 @@ async def test_error_in_startup_asgi():
 
     engin = ASGIEngin(Invoke(a), Invoke(b), Provide(asgi_type))
 
-    await engin.start()
+    await engin.run()
     assert not B_LIFECYCLE_STATE
