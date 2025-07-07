@@ -1,6 +1,6 @@
 # The Engin
 
-The Engin is a self-contained modular application.
+The Engin is your self-contained modular application.
 
 When ran the Engin takes care of the complete application lifecycle:
 

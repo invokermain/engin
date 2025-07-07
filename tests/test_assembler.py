@@ -22,15 +22,17 @@ async def test_assembler():
 
 
 async def test_assembler_with_multiproviders():
-    assembler = Assembler([Provide(make_many_int), Provide(make_many_int_alt)])
+    # catch any non-deterministic ordering bugs
+    for _ in range(10):
+        assembler = Assembler([Provide(make_many_int), Provide(make_many_int_alt)])
 
-    def assert_all(many_ints: list[int]):
-        expected_ints = [*make_many_int(), *make_many_int_alt()]
-        assert sorted(many_ints) == sorted(expected_ints)
+        def assert_all(many_ints: list[int]):
+            expected_ints = [*make_many_int(), *make_many_int_alt()]
+            assert many_ints == expected_ints
 
-    assembled_dependency = await assembler.assemble(Invoke(assert_all))
+        assembled_dependency = await assembler.assemble(Invoke(assert_all))
 
-    await assembled_dependency()
+        await assembled_dependency()
 
 
 async def test_assembler_providers_only_called_once():

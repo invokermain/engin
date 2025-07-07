@@ -1,7 +1,7 @@
 # Engin 🏎️
 
 Engin is a lightweight application framework powered by dependency injection, it helps
-you build both large monoliths and multiple microservices.
+you build and maintain large monoliths and many microservices.
 
 
 ## Features
@@ -36,27 +36,51 @@ The Engin framework includes:
     pip install engin
     ```
 
-## Getting Started
+## Example
 
-A minimal example:
+A small example which shows some of the runtime features of Engin. This application
+makes a http request and then performs a shutdown.
 
 ```python
 import asyncio
-
 from httpx import AsyncClient
-
-from engin import Engin, Invoke, Provide
-
-
-def httpx_client() -> AsyncClient:
-    return AsyncClient()
+from engin import Engin, Invoke, Lifecycle, Provide, ShutdownSwitch, Supervisor
 
 
-async def main(http_client: AsyncClient) -> None:
-    print(await http_client.get("https://httpbin.org/get"))
+def httpx_client_factory(lifecycle: Lifecycle) -> AsyncClient:
+    # create our http client
+    client = AsyncClient()
+    # this will open and close the AsyncClient as part of the application's lifecycle
+    lifecycle.append(client)
+    return client
 
-engin = Engin(Provide(httpx_client), Invoke(main))
 
+async def main(
+    httpx_client: AsyncClient,
+    shutdown: ShutdownSwitch,
+    supervisor: Supervisor,
+) -> None:
+    async def http_request():
+        await httpx_client.get("https://httpbin.org/get")
+        # one we've made the http request shutdown the application
+        shutdown.set()
+
+    # supervise the http request as part of the application's lifecycle
+    supervisor.supervise(http_request)
+
+# define our modular application
+engin = Engin(Provide(httpx_client_factory), Invoke(main))
+
+# run it!
 asyncio.run(engin.run())
 ```
 
+With logs enabled this will output:
+
+```shell
+INFO:engin:starting engin
+INFO:engin:startup complete
+INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
+INFO:engin:stopping engin
+INFO:engin:shutdown complete
+```

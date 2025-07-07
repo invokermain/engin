@@ -36,6 +36,13 @@ async def test_error_in_startup_handled_when_run():
     assert not B_LIFECYCLE_STATE
 
 
+async def test_error_in_startup_handled_when_start():
+    engin = Engin(Invoke(a), Invoke(b))
+
+    await asyncio.wait_for(engin.start(), timeout=0.5)
+    assert not B_LIFECYCLE_STATE
+
+
 async def test_error_in_startup_asgi():
     def asgi_type() -> ASGIType:
         return Starlette()
