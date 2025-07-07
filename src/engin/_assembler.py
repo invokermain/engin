@@ -65,7 +65,7 @@ class Assembler:
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._assembled_outputs: dict[TypeId, Any] = {}
         self._lock = asyncio.Lock()
-        self._graph_cache: dict[TypeId, set[Provide]] = defaultdict(set)
+        self._graph_cache: dict[TypeId, list[Provide]] = defaultdict(list)
 
         for provider in providers:
             type_id = provider.return_type_id
@@ -206,10 +206,10 @@ class Assembler:
             if provider.scope == scope:
                 self._assembled_outputs.pop(type_id, None)
 
-    def _resolve_providers(self, type_id: TypeId, resolved: set[TypeId]) -> set[Provide]:
+    def _resolve_providers(self, type_id: TypeId, resolved: set[TypeId]) -> Iterable[Provide]:
         """
         Resolves the chain of providers required to satisfy the provider of a given type.
-        Ordering of the return value is very important!
+        Ordering of the return value is very important here!
         """
         if type_id in self._graph_cache:
             return self._graph_cache[type_id]
@@ -231,13 +231,15 @@ class Assembler:
                 raise LookupError(msg)
 
         # providers that must be satisfied to satisfy the root level providers
-        resolved_providers = {
+        resolved_providers = [
             child_provider
             for root_provider in root_providers
             for root_provider_param in root_provider.parameter_type_ids
             for child_provider in self._resolve_providers(root_provider_param, resolved)
             if root_provider_param not in resolved
-        } | set(root_providers)
+        ]
+
+        resolved_providers.extend(root_providers)
 
         resolved.add(type_id)
         self._graph_cache[type_id] = resolved_providers

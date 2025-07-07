@@ -188,7 +188,13 @@ class Engin:
         started to return so it is safe to use immediately after.
         """
         self._async_context_run_task = asyncio.create_task(self.run())
-        await self._start_complete_event.wait()
+        await asyncio.wait(
+            [
+                asyncio.create_task(self._start_complete_event.wait()),
+                asyncio.create_task(self._stop_complete_event.wait()),
+            ],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
 
     async def stop(self) -> None:
         """
