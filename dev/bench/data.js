@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751213462179,
+  "lastUpdate": 1751878821287,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -270,6 +270,37 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00003992158146156203",
             "extra": "mean: 1.0005415078985946 msec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "3235f2af2b75efc5c4933290e7c6e022b988a412",
+          "message": "v0.1.0b2: supervisor cancels tasks on shutdown",
+          "timestamp": "2025-07-07T09:59:42+01:00",
+          "tree_id": "0accf6bc05b084309c5b742f04b2190680751558",
+          "url": "https://github.com/invokermain/engin/commit/3235f2af2b75efc5c4933290e7c6e022b988a412"
+        },
+        "date": 1751878820852,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1000.980275599149,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00003536468504028039",
+            "extra": "mean: 999.0206844000375 usec\nrounds: 10000"
           }
         ]
       }
