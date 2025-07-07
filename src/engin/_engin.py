@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import signal
-from asyncio import Event, Task
+from asyncio import Event
 from collections import defaultdict
 from contextlib import AsyncExitStack
 from enum import Enum
@@ -10,14 +10,13 @@ from itertools import chain
 from types import FrameType
 from typing import ClassVar
 
-from anyio import CancelScope, create_task_group, get_cancelled_exc_class
+from anyio import create_task_group, get_cancelled_exc_class
 
 from engin._assembler import AssembledDependency, Assembler
 from engin._dependency import Invoke, Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._option import Option
-from engin._shutdown import ShutdownSwitch
 from engin._supervisor import Supervisor
 from engin._type_utils import TypeId
 from engin.exceptions import EnginError
@@ -29,25 +28,15 @@ LOG = logging.getLogger("engin")
 class _EnginState(Enum):
     IDLE = 0
     """
-    Not yet started.
+    Engin is not yet started.
     """
 
-    STARTED = 1
+    RUNNING = 1
     """
-    Engin started via .start() call
-    """
-
-    RUNNING = 2
-    """
-    Engin running via .run() call
+    Engin is currently running.
     """
 
-    STOPPING = 3
-    """
-    Engin stopped via .stop() call
-    """
-
-    SHUTDOWN = 4
+    SHUTDOWN = 2
     """
     Engin has performed shutdown
     """
@@ -113,16 +102,15 @@ class Engin:
             *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
         """
         self._state = _EnginState.IDLE
-        self._stop_requested_event = ShutdownSwitch()
+        self._start_complete_event = Event()
+        self._stop_requested_event = Event()
         self._stop_complete_event = Event()
-        self._exit_stack: AsyncExitStack = AsyncExitStack()
-        self._shutdown_task: Task | None = None
-        self._run_task: Task | None = None
+        self._exit_stack = AsyncExitStack()
         self._assembler = Assembler([])
+        self._async_context_run_task: asyncio.Task | None = None
 
         self._providers: dict[TypeId, Provide] = {
             TypeId.from_type(Assembler): Supply(self._assembler),
-            TypeId.from_type(ShutdownSwitch): Supply(self._stop_requested_event),
         }
         self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
         self._invocations: list[Invoke] = []
@@ -147,34 +135,6 @@ class Engin:
         The engin will run until it is stopped via an external signal (i.e. SIGTERM or
         SIGINT), the `stop` method is called on the engin, or a lifecycle task errors.
         """
-        await self.start()
-
-        # engin failed to start, so exit early
-        if self._state != _EnginState.STARTED:
-            return
-
-        self._state = _EnginState.RUNNING
-
-        async with create_task_group() as tg:
-            tg.start_soon(_stop_engin_on_signal, self._stop_requested_event)
-            try:
-                await self._stop_requested_event.wait()
-                await self._shutdown()
-            except get_cancelled_exc_class():
-                with CancelScope(shield=True):
-                    await self._shutdown()
-                # warning: we do not reraise the cancellation here, this is ok
-                # as Engin.run() should be the outermost task and the cancellation
-                # has been handled gracefully.
-
-    async def start(self) -> None:
-        """
-        Start the engin.
-
-        This is an alternative to calling `run`. This method waits for the startup
-        lifecycle to complete and then returns. The caller is then responsible for
-        calling `stop`.
-        """
         if self._state != _EnginState.IDLE:
             raise EnginError("Engin is not idle, unable to start")
 
@@ -192,10 +152,6 @@ class Engin:
                 return
 
         lifecycle = await self._assembler.build(Lifecycle)
-        supervisor = await self._assembler.build(Supervisor)
-
-        if not supervisor.empty:
-            lifecycle.append(supervisor)
 
         try:
             for hook in lifecycle.list():
@@ -209,8 +165,30 @@ class Engin:
             await self._shutdown()
             return
 
+        supervisor = await self._assembler.build(Supervisor)
+
         LOG.info("startup complete")
-        self._state = _EnginState.STARTED
+        self._state = _EnginState.RUNNING
+        self._start_complete_event.set()
+
+        async with create_task_group() as tg:
+            tg.start_soon(_stop_engin_on_signal, self._stop_requested_event)
+
+            try:
+                async with supervisor:
+                    await self._stop_requested_event.wait()
+            except get_cancelled_exc_class():
+                pass
+            tg.cancel_scope.cancel()
+            await self._shutdown()
+
+    async def start(self) -> None:
+        """
+        Starts the engin in the background. This method will wait until the engin is fully
+        started to return so it is safe to use immediately after.
+        """
+        self._async_context_run_task = asyncio.create_task(self.run())
+        await self._start_complete_event.wait()
 
     async def stop(self) -> None:
         """
@@ -220,17 +198,24 @@ class Engin:
         Note this method can be safely called at any point, even before the engin is
         started.
         """
-        # If the Engin was ran via `start()` perform shutdown directly
-        if self._state == _EnginState.STARTED:
-            await self._shutdown()
-        # If the Engin was ran via `run()` notify via event
-        elif self._state == _EnginState.RUNNING:
-            self._stop_requested_event.set()
-            await self._stop_complete_event.wait()
+        self._stop_requested_event.set()
+        await self._stop_complete_event.wait()
 
     def graph(self) -> list[Node]:
+        """
+        Creates a graph representation of the engin's dependencies which can be used for
+        introspection or visualisations.
+
+        Returns: a list of Node objects.
+        """
         grapher = DependencyGrapher({**self._providers, **self._multiproviders})
         return grapher.resolve(self._invocations)
+
+    def is_running(self) -> bool:
+        return self._state == _EnginState.RUNNING
+
+    def is_stopped(self) -> bool:
+        return self._state == _EnginState.SHUTDOWN
 
     async def _shutdown(self) -> None:
         LOG.info("stopping engin")

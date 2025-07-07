@@ -1,7 +1,7 @@
 import asyncio
+import logging
 
 from engin import Engin, Invoke, Supervisor
-from engin._engin import _EnginState
 
 
 async def delayed_error_task():
@@ -13,14 +13,17 @@ def supervise(supervisor: Supervisor) -> None:
 
 
 async def test_error_in_supervised_task_handled_when_run(caplog):
+    caplog.set_level(logging.INFO)
     engin = Engin(Invoke(supervise))
-    await asyncio.wait_for(engin.run(), timeout=0.5)
+    await engin.run()
     assert "Process errored" in caplog.text
-    assert engin._state == _EnginState.SHUTDOWN
+    assert engin.is_stopped()
 
 
 async def test_error_in_supervised_task_handled_when_start(caplog):
+    caplog.set_level(logging.INFO)
     engin = Engin(Invoke(supervise))
-    await asyncio.wait_for(engin.start(), timeout=0.5)
+    await engin.start()
+    await asyncio.sleep(0.1)
     assert "Process errored" in caplog.text
-    assert engin._state == _EnginState.SHUTDOWN
+    assert engin.is_stopped()

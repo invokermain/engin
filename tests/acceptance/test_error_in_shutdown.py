@@ -34,6 +34,7 @@ async def test_error_in_shutdown():
 
     await engin.start()
     assert B_LIFECYCLE_STATE == 1
+
     await engin.stop()
     assert B_LIFECYCLE_STATE == 2
 
@@ -46,5 +47,6 @@ async def test_error_in_shutdown_asgi():
 
     await engin.start()
     assert B_LIFECYCLE_STATE == 1
+
     await engin.stop()
     assert B_LIFECYCLE_STATE == 2
