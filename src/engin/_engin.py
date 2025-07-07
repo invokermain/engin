@@ -188,13 +188,25 @@ class Engin:
         started to return so it is safe to use immediately after.
         """
         self._async_context_run_task = asyncio.create_task(self.run())
+        wait_tasks = [
+            asyncio.create_task(self._start_complete_event.wait()),
+            asyncio.create_task(self._stop_complete_event.wait()),
+        ]
         await asyncio.wait(
             [
-                asyncio.create_task(self._start_complete_event.wait()),
-                asyncio.create_task(self._stop_complete_event.wait()),
+                self._async_context_run_task,  # if a provider errors this will return first
+                *wait_tasks,
             ],
             return_when=asyncio.FIRST_COMPLETED,
         )
+        for task in wait_tasks:
+            task.cancel()
+
+        # raise the exception from the startup during run
+        if self._async_context_run_task.done():
+            startup_exception = self._async_context_run_task.exception()
+            if startup_exception is not None:
+                raise startup_exception
 
     async def stop(self) -> None:
         """
