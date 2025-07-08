@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+env:
+  UV_FROZEN: "1"
+
 jobs:
   benchmark-main:
     runs-on: ubuntu-latest

@@ -3,6 +3,9 @@ name: Check
 on:
   push:
 
+env:
+  UV_FROZEN: "1"
+
 jobs:
   check:
     name: python
@@ -40,6 +43,7 @@ jobs:
         run: uv run poe ci-test
 
       - name: Upload coverage reports to Codecov
+        if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

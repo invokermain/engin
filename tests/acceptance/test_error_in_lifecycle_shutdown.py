@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
@@ -29,13 +30,20 @@ def b(lifecycle: Lifecycle) -> None:
     lifecycle.append(_b_startup())
 
 
-async def test_error_in_shutdown():
+async def test_error_in_shutdown_when_start():
     engin = Engin(Invoke(a), Invoke(b))
 
-    await engin.start()
+    await asyncio.wait_for(engin.start(), timeout=0.5)
     assert B_LIFECYCLE_STATE == 1
 
-    await engin.stop()
+    await asyncio.wait_for(engin.stop(), timeout=0.5)
+    assert B_LIFECYCLE_STATE == 2
+
+
+async def test_error_in_shutdown_when_run():
+    engin = Engin(Invoke(a), Invoke(b))
+
+    await asyncio.wait_for(engin.run(), timeout=0.5)
     assert B_LIFECYCLE_STATE == 2
 
 

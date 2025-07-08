@@ -1,24 +1,28 @@
 import asyncio
-from asyncio import TaskGroup
+import signal
+import sys
+
+import pytest
 
 from engin import Engin
-from engin._engin import _EnginState
 
 
-async def test_engin_signal_handling():
+@pytest.mark.skipif(sys.platform == "win32", reason="`signal.raise_signal` not supported")
+async def test_engin_signal_handling_when_run():
     engin = Engin()
+    task = asyncio.create_task(engin.run())
+    await asyncio.sleep(0.1)
+    signal.raise_signal(signal.SIGTERM)
+    await asyncio.sleep(0.1)
+    assert engin.is_stopped()
+    del task
 
-    async with TaskGroup() as tg:
-        tg.create_task(engin.run())
-        # give it time to startup
-        await asyncio.sleep(0.1)
 
-        assert engin._state == _EnginState.RUNNING
-
-        # closest thing to emulating the actual signal with subprocesses
-        engin._stop_requested_event.set()
-
-        # give it time to shutdown
-        await asyncio.sleep(0.1)
-
-        assert engin._state == _EnginState.SHUTDOWN
+@pytest.mark.skipif(sys.platform == "win32", reason="`signal.raise_signal` not supported")
+async def test_engin_signal_handling_when_start():
+    engin = Engin()
+    await engin.start()
+    await asyncio.sleep(0.1)
+    signal.raise_signal(signal.SIGTERM)
+    await asyncio.sleep(0.1)
+    assert engin.is_stopped()
