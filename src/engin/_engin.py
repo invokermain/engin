@@ -10,7 +10,7 @@ from itertools import chain
 from types import FrameType
 from typing import ClassVar
 
-from anyio import create_task_group, get_cancelled_exc_class
+from anyio import create_task_group, open_signal_receiver
 
 from engin._assembler import AssembledDependency, Assembler
 from engin._dependency import Invoke, Provide, Supply
@@ -149,7 +149,7 @@ class Engin:
             except Exception as err:
                 name = invocation.dependency.name
                 LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
-                return
+                raise
 
         lifecycle = await self._assembler.build(Lifecycle)
 
@@ -177,10 +177,11 @@ class Engin:
             try:
                 async with supervisor:
                     await self._stop_requested_event.wait()
-            except get_cancelled_exc_class():
-                pass
+                    await self._shutdown()
+            except BaseException:
+                await self._shutdown()
+
             tg.cancel_scope.cancel()
-            await self._shutdown()
 
     async def start(self) -> None:
         """
@@ -217,7 +218,8 @@ class Engin:
         started.
         """
         self._stop_requested_event.set()
-        await self._stop_complete_event.wait()
+        if self._state == _EnginState.RUNNING:
+            await self._stop_complete_event.wait()
 
     def graph(self) -> list[Node]:
         """
@@ -236,24 +238,23 @@ class Engin:
         return self._state == _EnginState.SHUTDOWN
 
     async def _shutdown(self) -> None:
-        LOG.info("stopping engin")
-        await self._exit_stack.aclose()
-        self._stop_complete_event.set()
-        LOG.info("shutdown complete")
-        self._state = _EnginState.SHUTDOWN
+        if self._state == _EnginState.RUNNING:
+            LOG.info("stopping engin")
+            await self._exit_stack.aclose()
+            self._stop_complete_event.set()
+            LOG.info("shutdown complete")
+            self._state = _EnginState.SHUTDOWN
 
 
 async def _stop_engin_on_signal(stop_requested_event: Event) -> None:
     """
     A task that waits for a stop signal (SIGINT/SIGTERM) and notifies the given event.
     """
-    # try to gracefully handle sigint/sigterm
     if not _OS_IS_WINDOWS:
-        loop = asyncio.get_running_loop()
-        for signame in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(signame, stop_requested_event.set)
-
-        await stop_requested_event.wait()
+        with open_signal_receiver(signal.SIGINT, signal.SIGTERM) as recieved_signals:
+            async for signum in recieved_signals:
+                LOG.debug(f"received {signum.name} signal")
+                stop_requested_event.set()
     else:
         should_stop = False
 

@@ -42,8 +42,11 @@ async def test_error_in_startup_handled_when_start():
     await asyncio.wait_for(engin.start(), timeout=0.5)
     assert not B_LIFECYCLE_STATE
 
+    # check we can shutdown the app
+    await asyncio.wait_for(engin.stop(), timeout=0.5)
 
-async def test_error_in_startup_asgi():
+
+async def test_error_in_startup_asgi_handled_when_run():
     def asgi_type() -> ASGIType:
         return Starlette()
 
@@ -51,3 +54,16 @@ async def test_error_in_startup_asgi():
 
     await engin.run()
     assert not B_LIFECYCLE_STATE
+
+
+async def test_error_in_startup_asgi_handled_when_start():
+    def asgi_type() -> ASGIType:
+        return Starlette()
+
+    engin = ASGIEngin(Invoke(a), Invoke(b), Provide(asgi_type))
+
+    await asyncio.wait_for(engin.start(), timeout=0.5)
+    assert not B_LIFECYCLE_STATE
+
+    # check we can shutdown the app
+    await asyncio.wait_for(engin.stop(), timeout=0.5)

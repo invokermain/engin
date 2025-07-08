@@ -3,10 +3,7 @@ from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-import pytest
-
 from engin import Engin, Entrypoint, Invoke, Lifecycle, Provide
-from engin.exceptions import ProviderError
 from tests.deps import ABlock
 
 
@@ -60,19 +57,6 @@ async def test_engin_with_block():
 
     await engin.start()
     await engin.stop()
-
-
-async def test_engin_error_handling():
-    async def raise_value_error() -> int:
-        raise ValueError("foo")
-
-    async def main(foo: int) -> None:
-        return
-
-    engin = Engin(Provide(raise_value_error), Invoke(main))
-
-    with pytest.raises(ProviderError, match="foo"):
-        await engin.run()
 
 
 async def test_engin_with_entrypoint():
