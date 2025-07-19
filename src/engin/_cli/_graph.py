@@ -28,12 +28,16 @@ _APP_ORIGIN = ""
 @cli.command(name="graph")
 def serve_graph(
     app: Annotated[
-        str,
+        str | None,
         typer.Argument(help=COMMON_HELP["app"]),
-    ],
+    ] = None,
 ) -> None:
     """
     Creates a visualisation of your application's dependencies.
+
+    Examples:
+
+        1. `engin graph`
     """
     module_name, _, instance = get_engin_instance(app)
 

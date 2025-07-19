@@ -90,6 +90,7 @@ class Engin:
     """
 
     _LIB_OPTIONS: ClassVar[list[Option]] = [Provide(Lifecycle), Provide(Supervisor)]
+    _STOP_ON_SINGAL: ClassVar[bool] = True
 
     def __init__(self, *options: Option) -> None:
         """
@@ -172,7 +173,8 @@ class Engin:
         self._start_complete_event.set()
 
         async with create_task_group() as tg:
-            tg.start_soon(_stop_engin_on_signal, self._stop_requested_event)
+            if self._STOP_ON_SINGAL:
+                tg.start_soon(_stop_engin_on_signal, self._stop_requested_event)
 
             try:
                 async with supervisor:

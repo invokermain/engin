@@ -21,6 +21,8 @@ class ASGIType(Protocol):
 
 
 class ASGIEngin(Engin, ASGIType):
+    _STOP_ON_SINGAL = False  # web server implementation is responsible for this
+
     _asgi_type: ClassVar[type[ASGIType]] = ASGIType  # type: ignore[type-abstract]
     _asgi_app: ASGIType
 

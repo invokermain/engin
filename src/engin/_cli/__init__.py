@@ -9,6 +9,7 @@ except ImportError:
         " `cli` extra, e.g. pip install engin[cli]"
     ) from None
 
+from engin._cli._check import cli as check_cli
 from engin._cli._graph import cli as graph_cli
 from engin._cli._inspect import cli as inspect_cli
 
@@ -20,5 +21,6 @@ sys.path.insert(0, "")
 
 app = typer.Typer()
 
+app.add_typer(check_cli)
 app.add_typer(graph_cli)
 app.add_typer(inspect_cli)

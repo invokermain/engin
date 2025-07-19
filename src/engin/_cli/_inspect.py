@@ -19,9 +19,9 @@ _CLI_HELP = {
 @cli.command(name="inspect")
 def serve_graph(
     app: Annotated[
-        str,
+        str | None,
         typer.Argument(help=COMMON_HELP["app"]),
-    ],
+    ] = None,
     type_: Annotated[
         str | None,
         typer.Option("--type", help=_CLI_HELP["type"]),
@@ -39,9 +39,8 @@ def serve_graph(
 
     Examples:
 
-        1. `engin inspect examples.simple.main:engin --module httpx`
-
-        2. `engin inspect examples.simple.main:engin --type AsyncClient`
+        1. `engin inspect --module httpx`
+        2. `engin inspect --type AsyncClient`
     """
     module_name, _, instance = get_engin_instance(app)
 
