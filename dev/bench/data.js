@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751976404711,
+  "lastUpdate": 1752941897452,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -331,6 +331,37 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00004488442679282249",
             "extra": "mean: 988.775432699549 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "d112315ab4a40f8333550c10fcf33dce6c2aead7",
+          "message": "v0.1.0rc1: engin check cli command",
+          "timestamp": "2025-07-19T17:17:37+01:00",
+          "tree_id": "ff79dcab0f7cc2b85e0cbaef0021899928624e86",
+          "url": "https://github.com/invokermain/engin/commit/d112315ab4a40f8333550c10fcf33dce6c2aead7"
+        },
+        "date": 1752941897096,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1001.6391496142046,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000045754402528630514",
+            "extra": "mean: 998.3635328003743 usec\nrounds: 10000"
           }
         ]
       }
