@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Supervisor class which can safely supervise long running tasks.
-
-### Changed
-
-- `ASGIEngin.run()` now raises an error to prevent incorrect usage.
+- A new cli option `engin check` that validates whether you have any missing providers. 
+- Support for specifying `default-instance` in your `pyproject.toml` under `[tool.engin]`
+  which is used as a default value for the `app` parameter when using the cli.
 
 
 ## [0.0.20] - 2025-06-18

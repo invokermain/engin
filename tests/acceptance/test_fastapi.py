@@ -54,6 +54,7 @@ def test_fastapi():
     with starlette.testclient.TestClient(engin) as client:
         result = client.get("http://127.0.0.1:8000/")
 
+    assert result.status_code == 200
     assert result.json() == "hello world"
 
 
