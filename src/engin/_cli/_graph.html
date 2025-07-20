@@ -1,78 +1,883 @@
 <!doctype html>
 <html lang="en">
-  <style>
-    #mermaid-container {
-    width: 100%;
-    height: 100%;
-    overflow: auto; /* Enables scrolling */
-    border: 1px solid #ddd;
-    cursor: grab;
-    position: relative;
-    white-space: nowrap; /* Prevents wrapping */
-  }
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<head>
+    <title>Engin Dependency Graph</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
 
-  #mermaid-content {
-    width: max-content; /* Ensures content can expand */
-    height: max-content;
-  }
-  </style>
-  <script type="module">
-      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-      let config = { flowchart: { useMaxWidth: false, htmlLabels: true, defaultRenderer: "elk" } };
-      mermaid.initialize(config);
+        .controls {
+            background: white;
+            padding: 15px;
+            border-bottom: 2px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-      // Drag-to-Move Functionality
-      const container = document.getElementById("mermaid-container");
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-      let isDragging = false;
-      let startX, startY, scrollLeft, scrollTop;
+        .control-group label {
+            font-weight: bold;
+            color: #333;
+        }
 
-      container.addEventListener("pointerdown", (e) => {
-        isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        scrollLeft = container.scrollLeft;
-        scrollTop = container.scrollTop;
-        container.style.cursor = "grabbing";
-      });
+        .control-group input[type="checkbox"] {
+            transform: scale(1.2);
+        }
 
-      container.addEventListener("pointermove", (e) => {
-        if (!isDragging) return;
-        const x = e.clientX - startX;
-        const y = e.clientY - startY;
-        container.scrollLeft = scrollLeft - x;
-        container.scrollTop = scrollTop - y;
-      });
+        .control-group button {
+            padding: 8px 16px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
 
-      container.addEventListener("pointerup", () => {
-        isDragging = false;
-        container.style.cursor = "grab";
-      });
+        .control-group button:hover {
+            background: #005c99;
+        }
 
-      container.addEventListener("pointerleave", () => {
-        isDragging = false;
-        container.style.cursor = "grab";
-      });
-  </script>
-  <body>
-    <div style="border-style:outset">
-        <p>LEGEND</p>
-        <pre class="mermaid" id="legend">
-          graph LR
-            %%LEGEND%%
-            classDef b0 fill:#7fc97f;
-            classDef external stroke-dasharray: 5 5;
-        </pre>
+        .stats {
+            margin-left: auto;
+            color: #666;
+            font-size: 14px;
+        }
+
+        #mermaid-container {
+            width: 100%;
+            height: calc(100vh - 200px);
+            overflow: auto;
+            background: white;
+            cursor: grab;
+            position: relative;
+        }
+
+        #mermaid-container:active {
+            cursor: grabbing;
+        }
+
+        #mermaid-content {
+            width: max-content;
+            height: max-content;
+            min-width: 100%;
+            min-height: 100%;
+        }
+
+        .legend-container {
+            background: white;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            overflow-x: auto;
+        }
+
+        .legend-container h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            color: red;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px;
+        }
+
+        /* Tooltip styles */
+        .node-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid #555;
+            line-height: 1.4;
+            display: none;
+        }
+
+        .tooltip-header {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #555;
+            color: #87ceeb;
+        }
+
+        .tooltip-section {
+            margin: 6px 0;
+        }
+
+        .tooltip-label {
+            font-weight: bold;
+            color: #ffd700;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+        .tooltip-value {
+            color: #e0e0e0;
+        }
+
+        .tooltip-list {
+            margin: 4px 0 4px 16px;
+            padding: 0;
+        }
+
+        .tooltip-list li {
+            list-style: none;
+            margin: 2px 0;
+            color: #ccc;
+        }
+
+        .tooltip-list li:before {
+            content: "• ";
+            color: #87ceeb;
+            margin-right: 4px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="controls">
+    <div class="control-group">
+        <label>
+            <input type="checkbox" id="show-external" checked>
+            Show External Dependencies
+        </label>
     </div>
-    <div id="mermaid-container" style="width: 100%; overflow-x: auto; border: 1px solid #ddd; cursor: grab; position: relative;">
-        <div id="mermaid-content" style="width: max-content; height: max-content;">
-            <pre class="mermaid" id="graph">
-              %%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
-              graph LR
-                  %%DATA%%
-                  classDef external stroke-dasharray: 5 5;
-            </pre>
-        </div>
+
+    <div class="control-group">
+        <label>
+            <input type="checkbox" id="show-blocks" checked>
+            Group Block Dependencies
+        </label>
     </div>
-  </body>
+
+    <div class="control-group">
+        <label>Layout:</label>
+        <select id="layout-select">
+            <option value="dagre" selected>Dagre (Default)</option>
+            <option value="elk">ELK</option>
+            <option value="klay">Klay</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <label>Theme:</label>
+        <select id="theme-select">
+            <option value="default" selected>Default</option>
+            <option value="dark">Dark</option>
+            <option value="forest">Forest</option>
+            <option value="base">Base</option>
+            <option value="neutral">Neutral</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <button id="fit-view">Fit to View</button>
+        <button id="refresh-graph">Refresh</button>
+    </div>
+
+    <div class="stats">
+        <span id="node-count">0 nodes</span>
+        <span id="edge-count">0 edges</span>
+    </div>
+</div>
+
+<div id="mermaid-container">
+    <div class="loading" id="loading">
+        <div>Loading dependency graph...</div>
+    </div>
+    <div id="mermaid-content">
+        <div id="graph"></div>
+    </div>
+</div>
+
+<div class="legend-container">
+    <h3>Legend</h3>
+    <div id="legend-content">
+        <div id="legend"></div>
+    </div>
+</div>
+
+<div id="node-tooltip" class="node-tooltip"></div>
+
+<script type="application/json" id="graph-data">
+    %%GRAPH_DATA%%
+</script>
+
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+    let graphData = null;
+    let currentConfig = {
+        showExternal: true,
+        showBlocks: true,
+        layout: 'dagre',
+        theme: 'default',
+    };
+
+    // Initialize mermaid (will be re-initialized with proper config later)
+    mermaid.initialize({
+        startOnLoad: false,
+        flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            defaultRenderer: 'dagre'
+        },
+        theme: 'default'
+    });
+
+    // Load graph data
+    function loadGraphData() {
+        const dataScript = document.getElementById('graph-data');
+        try {
+            graphData = JSON.parse(dataScript.textContent);
+            return true;
+        } catch (e) {
+            console.error('Failed to parse graph data:', e);
+            showError('Error loading graph data: ' + e.message);
+            return false;
+        }
+    }
+
+    // Show error message
+    function showError(message) {
+        const loading = document.getElementById('loading');
+        loading.innerHTML = `<div class="error">${message}</div>`;
+        loading.classList.remove('hidden');
+    }
+
+    // Generate mermaid syntax from filtered data
+    function generateMermaidSyntax() {
+        if (!graphData) return '';
+
+        const {nodes, edges, blocks} = graphData;
+
+        // Filter nodes based on current settings
+        let filteredNodes = nodes;
+        if (!currentConfig.showExternal) {
+            filteredNodes = nodes.filter(node => !node.external);
+        }
+
+        // Create a set of visible node IDs for edge filtering
+        const visibleNodeIds = new Set(filteredNodes.map(node => node.id));
+
+        // Filter edges to only include those between visible nodes
+        const filteredEdges = edges.filter(edge =>
+            visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to)
+        );
+
+        // Generate mermaid syntax
+        let mermaidSyntax = `%%{init: {"flowchart": {"defaultRenderer": "${currentConfig.layout}"}} }%%\n`;
+        mermaidSyntax += 'graph LR\n';
+
+        if (currentConfig.showBlocks && blocks.length > 0) {
+            // GROUPED MODE: Show blocks as subgraphs
+
+            // Add edges that originate or end outside of blocks or go between blocks
+            const mainEdges = filteredEdges.filter(edge => (!edge.from_block || !edge.to_block || edge.to_block !== edge.from_block));
+            for (const edge of mainEdges) {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                if (fromNode && toNode) {
+                    mermaidSyntax += `  ${renderNode(fromNode)} --> ${renderNode(toNode)}\n`;
+                }
+            }
+
+            // Add block subgraphs
+            for (const block of blocks) {
+                const blockNodes = filteredNodes.filter(node => node.block === block);
+                if (blockNodes.length > 1) {
+                    mermaidSyntax += `  subgraph ${block.replace(/[^a-zA-Z0-9]/g, '_')}\n`;
+
+                    // Add edges within this block
+                    const blockEdges = filteredEdges.filter(edge => {
+                        const fromNode = nodes.find(n => n.id === edge.from);
+                        const toNode = nodes.find(n => n.id === edge.to);
+                        return fromNode?.block === block && toNode?.block === block;
+                    });
+
+                    for (const edge of blockEdges) {
+                        const fromNode = nodes.find(n => n.id === edge.from);
+                        const toNode = nodes.find(n => n.id === edge.to);
+
+                        if (fromNode && toNode) {
+                            mermaidSyntax += `    ${renderNode(fromNode, false)} --> ${renderNode(toNode, false)}\n`;
+                        }
+                    }
+
+                    mermaidSyntax += '  end\n';
+                } else if (blockNodes.length === 1) {
+                    mermaidSyntax += `  subgraph ${block.replace(/[^a-zA-Z0-9]/g, '_')}\n`;
+                    mermaidSyntax += `    ${renderNode(blockNodes[0], false)}\n`
+                    mermaidSyntax += '  end\n';
+                }
+            }
+        } else {
+            // FLAT MODE: Show all edges as regular connections without block grouping
+            for (const edge of filteredEdges) {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                if (fromNode && toNode) {
+                    mermaidSyntax += `  ${renderNode(fromNode)} --> ${renderNode(toNode)}\n`;
+                }
+            }
+        }
+
+        // Add CSS classes
+        mermaidSyntax += '  classDef external stroke-dasharray: 5 5;\n';
+        mermaidSyntax += '  classDef b0 fill:#7fc97f;\n';
+
+        return mermaidSyntax;
+    }
+
+    // Render a single node in mermaid format
+    function renderNode(node, includeBlock = true) {
+        let label = '';
+        let shape;
+        let styleClasses = '';
+
+        if (includeBlock && node.block) {
+            label += `_${node.block}_<br/>`;
+        }
+
+        // Escape the label for mermaid
+        const escapedLabel = node.label.replace(/["`]/g, '');
+        label += escapedLabel;
+
+        switch (node.type) {
+            case 'Supply':
+                shape = `${node.id}("${label}")`;
+                break;
+            case 'Provide':
+                shape = `${node.id}["${label}"]`;
+                break;
+            case 'Entrypoint':
+                shape = `${node.id}[/"${label}"\\]`;
+                break;
+            case 'Invoke':
+                shape = `${node.id}[/"${label}"/]`;
+                break;
+            case 'APIRoute':
+                shape = `${node.id}[["${label}"]]`;
+                break;
+            default:
+                shape = `${node.id}["${label}"]`;
+        }
+
+        if (node.style_classes && node.style_classes.length > 0) {
+            styleClasses = `:::${node.style_classes.join(' ')}`;
+        }
+
+        return shape + styleClasses;
+    }
+
+    // Update statistics
+    function updateStats() {
+        if (!graphData) return;
+
+        const {nodes, edges} = graphData;
+        let visibleNodes = nodes;
+
+        if (!currentConfig.showExternal) {
+            visibleNodes = nodes.filter(node => !node.external);
+        }
+
+        const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
+        const visibleEdges = edges.filter(edge =>
+            visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to)
+        );
+
+        document.getElementById('node-count').textContent = `${visibleNodes.length} nodes`;
+        document.getElementById('edge-count').textContent = `${visibleEdges.length} edges`;
+    }
+
+    // Tooltip functionality
+    function createTooltipContent(nodeData) {
+        const {type, label, details, block, external} = nodeData;
+
+        let content = `<div class="tooltip-header">${type}: ${label}</div>`;
+
+        // Basic information
+        content += `<div class="tooltip-section">`;
+        content += `<span class="tooltip-label">Module:</span> <span class="tooltip-value">${details.source_module}</span><br>`;
+        content += `<span class="tooltip-label">Package:</span> <span class="tooltip-value">${details.source_package}</span><br>`;
+        if (external) {
+            content += `<span class="tooltip-label">External:</span> <span class="tooltip-value">Yes</span><br>`;
+        }
+        if (block) {
+            content += `<span class="tooltip-label">Block:</span> <span class="tooltip-value">${block}</span><br>`;
+        }
+        content += `</div>`;
+
+        // Type-specific information
+        if (details.return_type) {
+            content += `<div class="tooltip-section">`;
+            content += `<span class="tooltip-label">Returns:</span> <span class="tooltip-value">${details.return_type}</span><br>`;
+            if (details.value_type) {
+                content += `<span class="tooltip-label">Value Type:</span> <span class="tooltip-value">${details.value_type}</span><br>`;
+            }
+            if (details.factory_function) {
+                content += `<span class="tooltip-label">Factory:</span> <span class="tooltip-value">${details.factory_function}</span><br>`;
+            }
+            if (details.scope) {
+                content += `<span class="tooltip-label">Scope:</span> <span class="tooltip-value">${details.scope}</span><br>`;
+            }
+            if (details.multiprovider) {
+                content += `<span class="tooltip-label">Multi:</span> <span class="tooltip-value">Yes</span><br>`;
+            }
+            content += `</div>`;
+        }
+
+        if (details.function) {
+            content += `<div class="tooltip-section">`;
+            content += `<span class="tooltip-label">Function:</span> <span class="tooltip-value">${details.function}</span><br>`;
+            content += `</div>`;
+        }
+
+        if (details.entrypoint_type) {
+            content += `<div class="tooltip-section">`;
+            content += `<span class="tooltip-label">Entry Type:</span> <span class="tooltip-value">${details.entrypoint_type}</span><br>`;
+            content += `</div>`;
+        }
+
+        if (details.methods && details.methods.length > 0) {
+            content += `<div class="tooltip-section">`;
+            content += `<span class="tooltip-label">Methods:</span> <span class="tooltip-value">${details.methods.join(', ')}</span><br>`;
+            if (details.path) {
+                content += `<span class="tooltip-label">Path:</span> <span class="tooltip-value">${details.path}</span><br>`;
+            }
+            content += `</div>`;
+        }
+
+        return content;
+    }
+
+    function showTooltip(event, nodeId) {
+        const tooltip = document.getElementById('node-tooltip');
+        if (!tooltip) return;
+
+        const nodeData = graphData.nodes.find(n => n.id === nodeId);
+        if (!nodeData) return;
+
+        tooltip.innerHTML = createTooltipContent(nodeData);
+        tooltip.style.display = 'block';
+
+        // Position tooltip near mouse
+        const rect = document.getElementById('mermaid-container').getBoundingClientRect();
+        let x = event.clientX - rect.left + 15;
+        let y = event.clientY - rect.top + 15;
+
+        // Ensure tooltip is always visible on screen
+        const minX = 10;
+        const minY = 10;
+        const maxX = rect.width - 320;
+        const maxY = rect.height - 200;
+
+        x = Math.max(minX, Math.min(x, maxX));
+        y = Math.max(minY, Math.min(y, maxY));
+
+        tooltip.style.left = `${x}px`;
+        tooltip.style.top = `${y}px`;
+    };
+
+    function hideTooltip() {
+        const tooltip = document.getElementById('node-tooltip');
+        tooltip.style.display = 'none';
+    }
+
+    // Helper function to extract node ID from flowchart format
+    function extractNodeId(elementId) {
+        if (!elementId) return null;
+
+        // Handle direct format: n1234567890
+        if (/^n\d+$/.test(elementId)) {
+            return elementId;
+        }
+
+        // Handle flowchart format: flowchart-n1234567890-0
+        const flowchartMatch = elementId.match(/^flowchart-(n\d+)-\d+$/);
+        if (flowchartMatch) {
+            return flowchartMatch[1];
+        }
+
+        return null;
+    }
+
+    function attachTooltipListeners() {
+        setTimeout(() => {
+            const svgElement = document.querySelector('#graph svg');
+            if (!svgElement) return;
+
+            // Find all node group elements
+            const nodeGroups = svgElement.querySelectorAll('g.node');
+
+            nodeGroups.forEach(group => {
+                // Extract node ID from flowchart format: flowchart-n1234567890-0 → n1234567890
+                const flowchartMatch = group.id.match(/^flowchart-(n\d+)-\d+$/);
+                if (flowchartMatch) {
+                    const nodeId = flowchartMatch[1];
+
+                    if (!group.hasAttribute('data-tooltip-attached')) {
+                        group.setAttribute('data-tooltip-attached', 'true');
+                        group.style.cursor = 'pointer';
+
+                        group.addEventListener('mouseenter', (event) => {
+                            showTooltip(event, nodeId);
+                        });
+
+                        group.addEventListener('mouseleave', () => {
+                            hideTooltip();
+                        });
+
+                        group.addEventListener('mousemove', (event) => {
+                            if (document.getElementById('node-tooltip').style.display === 'block') {
+                                showTooltip(event, nodeId);
+                            }
+                        });
+                    }
+                }
+            });
+        }, 300);
+    };
+
+    // Render the graph
+    async function renderGraph() {
+        if (!graphData) return;
+
+        const loading = document.getElementById('loading');
+        const content = document.getElementById('mermaid-content');
+        const graphElement = document.getElementById('graph');
+
+        loading.classList.remove('hidden');
+
+        try {
+            graphElement.textContent = generateMermaidSyntax();
+            graphElement.removeAttribute('data-processed');
+
+            await mermaid.run({
+                querySelector: '#graph'
+            });
+
+            updateStats();
+            attachTooltipListeners();
+
+            loading.classList.add('hidden');
+            content.classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Error rendering graph:', error);
+            showError('Error rendering graph: ' + error.message);
+        }
+    }
+
+    // Render legend
+    async function renderLegend() {
+        if (!graphData || !graphData.legend) return;
+
+        const legendElement = document.getElementById('legend');
+        legendElement.textContent = `graph LR\n  ${graphData.legend}\n  classDef b0 fill:#7fc97f;\n  classDef external stroke-dasharray: 5 5;`;
+        legendElement.removeAttribute('data-processed');
+
+        try {
+            await mermaid.run({
+                querySelector: '#legend'
+            });
+        } catch (error) {
+            console.error('Error rendering legend:', error);
+        }
+    }
+
+    function handleContainerMouseOver(event) {
+        const target = event.target;
+
+        // Only process events within the SVG area
+        const svgElement = document.querySelector('#graph svg');
+        if (!svgElement || !svgElement.contains(target)) {
+            return;
+        }
+
+        // Check if the target or its parent might be a mermaid node
+        let nodeElement = target;
+        let nodeId = null;
+        let attempts = 0;
+
+        // Traverse up the DOM tree to find a node with an ID starting with 'n' followed by digits
+        while (nodeElement && attempts < 5) {
+            // More specific check: ID starts with 'n' followed by digits (actual node IDs)
+            if (nodeElement.id && /^n\d+$/.test(nodeElement.id)) {
+                nodeId = nodeElement.id;
+                break;
+            }
+
+            // Check if this element has a child with a valid node ID
+            if (nodeElement.querySelector) {
+                const childWithId = nodeElement.querySelector('[id]');
+                if (childWithId && childWithId.id && /^n\d+$/.test(childWithId.id)) {
+                    nodeId = childWithId.id;
+                    break;
+                }
+            }
+
+            nodeElement = nodeElement.parentElement;
+            attempts++;
+        }
+
+        if (nodeId) {
+            console.log(`Alternative method found node: ${nodeId}`);
+            showTooltip(event, nodeId);
+        }
+    }
+
+    function handleContainerMouseOut(event) {
+        // Only hide if we're actually leaving the container area
+        const container = document.getElementById('mermaid-container');
+        if (!event.relatedTarget || !container.contains(event.relatedTarget)) {
+            hideTooltip();
+        }
+    }
+
+    // Setup drag functionality
+    function setupDragFunctionality() {
+        const container = document.getElementById("mermaid-container");
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        container.addEventListener("pointerdown", (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            scrollLeft = container.scrollLeft;
+            scrollTop = container.scrollTop;
+            container.style.cursor = "grabbing";
+            // Hide tooltip when starting to drag
+            hideTooltip();
+        });
+
+        container.addEventListener("pointermove", (e) => {
+            if (!isDragging) return;
+            const x = e.clientX - startX;
+            const y = e.clientY - startY;
+            container.scrollLeft = scrollLeft - x;
+            container.scrollTop = scrollTop - y;
+        });
+
+        container.addEventListener("pointerup", () => {
+            isDragging = false;
+            container.style.cursor = "grab";
+        });
+
+        container.addEventListener("pointerleave", () => {
+            isDragging = false;
+            container.style.cursor = "grab";
+            hideTooltip();
+        });
+
+        container.addEventListener("scroll", () => {
+            hideTooltip();
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!container.contains(e.target)) {
+                hideTooltip();
+            }
+        });
+    }
+
+    // Sync config with DOM elements
+    function syncConfigWithDOM() {
+        const showExternalEl = document.getElementById('show-external');
+        const showBlocksEl = document.getElementById('show-blocks');
+        const layoutSelectEl = document.getElementById('layout-select');
+        const themeSelectEl = document.getElementById('theme-select');
+
+        // Set DOM values to match config
+        showExternalEl.checked = currentConfig.showExternal;
+        showBlocksEl.checked = currentConfig.showBlocks;
+        layoutSelectEl.value = currentConfig.layout;
+        themeSelectEl.value = currentConfig.theme;
+    }
+
+    function setupEventListeners() {
+        document.getElementById('show-external').addEventListener('change', (e) => {
+            currentConfig.showExternal = e.target.checked;
+            renderGraph();
+        });
+
+        document.getElementById('show-blocks').addEventListener('change', (e) => {
+            currentConfig.showBlocks = e.target.checked;
+            renderGraph();
+        });
+
+        document.getElementById('layout-select').addEventListener('change', async (e) => {
+            currentConfig.layout = e.target.value;
+
+            // Reinitialize mermaid with new layout
+            mermaid.initialize({
+                startOnLoad: false,
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    defaultRenderer: e.target.value
+                },
+                theme: currentConfig.theme
+            });
+
+            // Clear the graph and force re-render
+            const graphElement = document.getElementById('graph');
+            graphElement.innerHTML = '';
+            graphElement.removeAttribute('data-processed');
+
+            await renderGraph();
+        });
+
+        document.getElementById('theme-select').addEventListener('change', async (e) => {
+            currentConfig.theme = e.target.value;
+
+            // Reinitialize mermaid with new theme
+            mermaid.initialize({
+                startOnLoad: false,
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    defaultRenderer: currentConfig.layout
+                },
+                theme: e.target.value
+            });
+
+            // Clear both graph and legend and force re-render
+            const graphElement = document.getElementById('graph');
+            const legendElement = document.getElementById('legend');
+
+            graphElement.innerHTML = '';
+            graphElement.removeAttribute('data-processed');
+            legendElement.innerHTML = '';
+            legendElement.removeAttribute('data-processed');
+
+            await renderGraph();
+            await renderLegend();
+        });
+
+        document.getElementById('fit-view').addEventListener('click', () => {
+            const container = document.getElementById('mermaid-container');
+            container.scrollTo({top: 0, left: 0, behavior: 'smooth'});
+        });
+
+        document.getElementById('refresh-graph').addEventListener('click', () => {
+            renderGraph();
+        });
+    }
+
+    // Initialize everything
+    async function init() {
+        try {
+            if (!loadGraphData()) {
+                return;
+            }
+
+            syncConfigWithDOM();
+            setupEventListeners();
+            setupDragFunctionality();
+
+            // Initialize mermaid with current config
+            mermaid.initialize({
+                startOnLoad: false,
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    defaultRenderer: currentConfig.layout
+                },
+                theme: currentConfig.theme
+            });
+
+            // Initial render
+            await renderGraph();
+            await renderLegend();
+
+        } catch (error) {
+            console.error('Initialization error:', error);
+            showError('Initialization error: ' + error.message);
+        }
+    }
+
+    // Debug function to inspect SVG structure
+    window.debugTooltips = function () {
+        const svgElement = document.querySelector('#graph svg');
+        if (!svgElement) {
+            console.log('No SVG found');
+            return;
+        }
+
+        console.log('=== SVG STRUCTURE DEBUG ===');
+
+        // Check all elements with IDs
+        const allElementsWithIds = svgElement.querySelectorAll('[id]');
+        console.log(`Found ${allElementsWithIds.length} elements with IDs:`);
+        allElementsWithIds.forEach(el => {
+            console.log(`- ${el.tagName}: "${el.id}" (classes: ${el.className.baseVal || el.className})`);
+        });
+
+        // Check g.node elements specifically
+        const nodeGroups = svgElement.querySelectorAll('g.node');
+        console.log(`\nFound ${nodeGroups.length} g.node elements:`);
+        nodeGroups.forEach((group, i) => {
+            console.log(`Node ${i}:`);
+            console.log(`  Group ID: "${group.id}"`);
+            console.log(`  Group classes: ${group.className.baseVal}`);
+
+            const children = Array.from(group.children);
+            children.forEach(child => {
+                console.log(`  Child: ${child.tagName} ID:"${child.id}" classes:"${child.className.baseVal || child.className}"`);
+            });
+        });
+
+        // Test the regex pattern
+        console.log('\n=== PATTERN TEST ===');
+        allElementsWithIds.forEach(el => {
+            if (el.id) {
+                const matches = /^n\d+$/.test(el.id);
+                console.log(`ID "${el.id}" matches pattern: ${matches}`);
+            }
+        });
+    };
+
+    // Start when DOM is ready
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+
 </html>

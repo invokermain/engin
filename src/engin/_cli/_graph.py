@@ -1,4 +1,5 @@
 import contextlib
+import json
 import socketserver
 import threading
 from http.server import BaseHTTPRequestHandler
@@ -9,9 +10,10 @@ from typing import Annotated, Any
 import typer
 from rich import print
 
-from engin import Entrypoint, Invoke, TypeId
+from engin import Engin, Entrypoint, Invoke, TypeId
 from engin._cli._common import COMMON_HELP, get_engin_instance
 from engin._dependency import Dependency, Provide, Supply
+from engin._graph import Node
 from engin.extensions.asgi import ASGIEngin
 
 try:
@@ -46,37 +48,11 @@ def serve_graph(
 
     nodes = instance.graph()
 
-    # transform dependencies into mermaid syntax
-    dependencies = [
-        f"{_render_node(node.parent)} --> {_render_node(node.node)}"
-        for node in nodes
-        if node.parent is not None
-        and not (node.node.block_name and node.node.block_name == node.parent.block_name)
-    ]
+    # Generate JSON data for interactive graph
+    graph_data = _generate_graph_data(nodes, instance)
 
-    blocks = {node.node.block_name for node in nodes if node.node.block_name is not None}
-
-    # group blocks into subgraphs
-    for block in blocks:
-        dependencies.append(f"subgraph {block}")
-        dependencies.extend(
-            [
-                f"{_render_node(node.parent, False)} --> {_render_node(node.node, False)}"
-                for node in nodes
-                if node.parent is not None
-                and node.node.block_name == block
-                and node.parent.block_name == block
-            ]
-        )
-        dependencies.append("end")
-
-    html = (
-        _GRAPH_HTML.replace("%%DATA%%", "\n".join(dependencies))
-        .replace(
-            "%%LEGEND%%",
-            ASGI_ENGIN_LEGEND if isinstance(instance, ASGIEngin) else DEFAULT_LEGEND,
-        )
-        .encode("utf8")
+    html = _GRAPH_HTML.replace("%%GRAPH_DATA%%", json.dumps(graph_data, indent=2)).encode(
+        "utf8"
     )
 
     class Handler(BaseHTTPRequestHandler):
@@ -108,47 +84,130 @@ def wait_for_interrupt() -> None:
     sleep(10000)
 
 
-_BLOCK_IDX: dict[str, int] = {}
-_SEEN_BLOCKS: list[str] = []
+def _generate_graph_data(nodes: list[Node], instance: Engin) -> dict[str, Any]:
+    """Generate JSON data structure for interactive graph rendering."""
+    all_deps = set()
+    for node in nodes:
+        all_deps.add(node.node)
+        if node.parent:
+            all_deps.add(node.parent)
+
+    # Generate node data
+    node_data = []
+    for dep in all_deps:
+        node_info = _get_node_info(dep)
+        node_data.append(node_info)
+
+    # Generate edge data
+    edge_data = [
+        {
+            "from": f"n{id(node.parent)}",
+            "to": f"n{id(node.node)}",
+            "from_block": node.parent.block_name,
+            "to_block": node.node.block_name,
+        }
+        for node in nodes
+        if node.parent is not None
+    ]
+
+    # Get block information
+    blocks = list({node.node.block_name for node in nodes if node.node.block_name is not None})
+
+    # Generate legend
+    legend = ASGI_ENGIN_LEGEND if isinstance(instance, ASGIEngin) else DEFAULT_LEGEND
+
+    return {
+        "nodes": node_data,
+        "edges": edge_data,
+        "blocks": blocks,
+        "legend": legend,
+        "app_origin": _APP_ORIGIN,
+    }
 
 
-def _render_node(node: Dependency, render_block: bool = True) -> str:
-    node_id = id(node)
-    md = ""
-    style = ""
+def _get_node_info(node: Dependency) -> dict[str, Any]:
+    """Extract node information for JSON representation."""
+    node_id = f"n{id(node)}"  # Add 'n' prefix to match mermaid node IDs
+    label = ""
+    style_classes = []
 
-    # format block name
-    if render_block and (n := node.block_name):
-        md += f"_{n}_\n"
-
+    # Determine if external
     node_root_package = node.source_package.split(".", maxsplit=1)[0]
-    if node_root_package != _APP_ORIGIN:
-        if style:
-            style += "E"
-        else:
-            style = "external"
+    is_external = node_root_package != _APP_ORIGIN
+    if is_external:
+        style_classes.append("external")
 
-    if style:
-        style = f":::{style}"
+    # Collect detailed information for tooltips
+    details: dict[str, Any] = {
+        "full_name": node.name,
+        "source_module": node.source_module,
+        "source_package": node.source_package,
+        "parameters": [],
+        "return_type": None,
+        "scope": None,
+    }
 
+    # Get parameter information
+    if hasattr(node, "parameter_type_ids"):
+        details["parameters"] = [str(param_id) for param_id in node.parameter_type_ids]
+
+    # Determine node type and extract specific details
     if isinstance(node, Supply):
-        md += f"{_short_name(node.return_type_id)}"
-        return f'{node_id}("`{md}`"){style}'
-    if isinstance(node, Provide):
-        md += f"{_short_name(node.return_type_id)}"
-        return f'{node_id}["`{md}`"]{style}'
-    if isinstance(node, Entrypoint):
+        node_type = "Supply"
+        label += f"{_short_name(node.return_type_id)}"
+        shape = "round"
+        details["return_type"] = str(node.return_type_id)
+        if hasattr(node, "_value"):
+            details["value_type"] = type(node._value).__name__
+    elif isinstance(node, Provide):
+        node_type = "Provide"
+        label += f"{_short_name(node.return_type_id)}"
+        shape = "rect"
+        details["return_type"] = str(node.return_type_id)
+        details["factory_function"] = node.func_name
+        if node.scope:
+            details["scope"] = node.scope
+            style_classes.append(f"scope-{node.scope}")
+        if node.is_multiprovider:
+            details["multiprovider"] = True
+            style_classes.append("multi")
+    elif isinstance(node, Entrypoint):
+        node_type = "Entrypoint"
         entrypoint_type = node.parameter_type_ids[0]
-        md += f"{entrypoint_type}"
-        return f'{node_id}[/"`{md}`"\\]{style}'
-    if isinstance(node, Invoke):
-        md += f"{node.func_name}"
-        return f'{node_id}[/"`{md}`"/]{style}'
-    if isinstance(node, APIRouteDependency):
-        md += f"{node.name}"
-        return f'{node_id}[["`{md}`"]]{style}'
+        label += f"{entrypoint_type}"
+        shape = "trapezoid"
+        details["entrypoint_type"] = str(entrypoint_type)
+    elif isinstance(node, Invoke):
+        node_type = "Invoke"
+        label += f"{node.func_name}"
+        shape = "trapezoid"
+        details["function"] = node.func_name
+    elif APIRouteDependency is not None and isinstance(node, APIRouteDependency):
+        node_type = "APIRoute"
+        label += f"{node.name}"
+        shape = "subroutine"
+        if hasattr(node, "route"):
+            details["methods"] = (
+                list(node.route.methods) if hasattr(node.route, "methods") else []
+            )
+            details["path"] = getattr(node.route, "path", "")
     else:
-        return f'{node_id}["`{node.name}`"]{style}'
+        node_type = "Other"
+        label += f"{node.name}"
+        shape = "rect"
+
+    return {
+        "id": node_id,
+        "label": label,
+        "type": node_type,
+        "external": is_external,
+        "block": node.block_name,
+        "shape": shape,
+        "style_classes": style_classes,
+        "source_module": node.source_module,
+        "source_package": node.source_package,
+        "details": details,
+    }
 
 
 def _short_name(name: TypeId) -> str:
