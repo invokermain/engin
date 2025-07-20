@@ -11,7 +11,7 @@ from engin._cli._common import COMMON_HELP, get_engin_instance, print_error
 cli = typer.Typer()
 _CLI_HELP = {
     "type": "Filter providers by the provided type, e.g. `AsyncClient` or `float[]`",
-    "module": "Filter providers by the provided types' module, e.g. `engin` or `httpx`",
+    "module": "Filter providers by the provided type's module, e.g. `engin` or `httpx`",
     "verbose": "Enables verbose output",
 }
 
@@ -74,8 +74,11 @@ def serve_graph(
         available = sorted(map(str, instance.assembler.providers))
         print_error(f"No matching providers, available: {available}")
 
-    if matching_provider_count > 1:
-        console.print(f"Found {matching_provider_count} matching providers", style="dim")
+    console.print(
+        f"Found {matching_provider_count} matching provider"
+        + ("s" if matching_provider_count > 1 else ""),
+        style="dim",
+    )
 
     table = Table(show_header=False, show_lines=False, box=box.ASCII)
 

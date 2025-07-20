@@ -58,19 +58,33 @@ class _SupervisorTask:
                 await self.factory()
                 self.complete = True
                 return
-            except get_cancelled_exc_class():
-                LOG.info(f"{self.name} cancelled")
+            except get_cancelled_exc_class() as err:
+                LOG.debug(f"supervised task '{self.name}' was cancelled", exc_info=err)
                 raise
             except Exception as err:
-                LOG.error(f"Supervisor: {self.name} raised {type(err).__name__}", exc_info=err)
                 self.last_exception = err
 
                 if self.on_exception == OnException.IGNORE:
+                    LOG.warning(
+                        f"supervisor task '{self.name}' raised {type(err).__name__} "
+                        "which will be ignored",
+                        exc_info=err,
+                    )
                     self.complete = True
                     return
                 if self.on_exception == OnException.RETRY:
+                    LOG.warning(
+                        f"supervisor task '{self.name}' raised {type(err).__name__} "
+                        "which will be retried",
+                        exc_info=err,
+                    )
                     continue
                 if self.on_exception == OnException.SHUTDOWN:
+                    LOG.error(
+                        f"supervisor task '{self.name}' raised {type(err).__name__}, "
+                        "starting shutdown",
+                        exc_info=err,
+                    )
                     self.complete = True
                     raise get_cancelled_exc_class() from None
                 assert_never(self.on_exception)

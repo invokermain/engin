@@ -49,8 +49,8 @@ await engin.run()  # prints 'hello'
 
 !!!tip
 
-Blocks are themselves valid options, so Blocks can include other Blocks as options. This
-compisitional approach can help you build and manage larger applications.
+    Blocks are themselves valid options, so Blocks can include other Blocks as options. This
+    compisitional approach can help you build and manage larger applications.
 
 
 ## Defining Providers & Invocations in the Block
@@ -77,6 +77,6 @@ class ExampleBlock(Block):
 
 !!!note
 
-The `self` parameter in these methods is replaced with an empty object at runtime so
-should not be used. Blocks do not need to be instantiated to be passed to Engin as an
-option.
+    The `self` parameter in these methods is replaced with an empty object at runtime so
+    should not be used. Blocks do not need to be instantiated to be passed to Engin as an
+    option.

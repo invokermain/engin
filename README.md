@@ -14,13 +14,13 @@ Engin is a lightweight application framework powered by dependency injection, it
 you build and maintain large monoliths and many microservices.
 
 
-## Features
+## Feature
 
-The Engin framework includes:
+The Engin framework gives you:
 
 - A fully-featured dependency injection system.
 - A robust application runtime with lifecycle hooks and supervised background tasks.
-- Zero boiler-plate code reuse across multiple applications.
+- Zero boiler-plate code reuse across applications.
 - Integrations for other frameworks such as FastAPI.
 - Full async support.
 - CLI commands to aid local development.
@@ -28,7 +28,7 @@ The Engin framework includes:
 
 ## Installation
 
-Engin is available on PyPI, install using your favourite dependency manager:
+Engin is available on PyPI, install it using your favourite dependency manager:
 
 - `pip install engin`
 - `poetry add engin`
@@ -36,13 +36,13 @@ Engin is available on PyPI, install using your favourite dependency manager:
 
 ## Example
 
-A small example which shows some of the runtime features of Engin. This application
-makes a http request and then performs a shutdown.
+A small example which shows some of the features of Engin. This application
+makes 3 http requests and shuts itself down.
 
 ```python
 import asyncio
 from httpx import AsyncClient
-from engin import Engin, Invoke, Lifecycle, Provide, Supervisor
+from engin import Engin, Invoke, Lifecycle, OnException, Provide, Supervisor
 
 
 def httpx_client_factory(lifecycle: Lifecycle) -> AsyncClient:
@@ -57,13 +57,17 @@ async def main(
     httpx_client: AsyncClient,
     supervisor: Supervisor,
 ) -> None:
-    async def http_request():
-        await httpx_client.get("https://httpbin.org/get")
-        # one we've made the http request shutdown the application
-        raise asyncio.CancelledError("Forcing shutdown")
+    async def http_requests_task():
+        # simulate a background task
+        for x in range(3):
+            await httpx_client.get("https://httpbin.org/get")
+            await asyncio.sleep(1.0)
+        # raise an error to shutdown the application, normally you wouldn't do this!
+        raise RuntimeError("Forcing shutdown")
 
-    # supervise the http request as part of the application's lifecycle
-    supervisor.supervise(http_request)
+    # supervise the http requests as part of the application's lifecycle
+    supervisor.supervise(http_requests_task, on_exception=OnException.SHUTDOWN)
+
 
 # define our modular application
 engin = Engin(Provide(httpx_client_factory), Invoke(main))
@@ -78,6 +82,15 @@ With logs enabled this will output:
 INFO:engin:starting engin
 INFO:engin:startup complete
 INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
+ERROR:engin:supervisor task 'http_requests_task' raised RuntimeError, starting shutdown
+Traceback (most recent call last):
+  File "C:\dev\python\engin\src\engin\_supervisor.py", line 58, in __call__
+    await self.factory()
+  File "C:\dev\python\engin\readme_example.py", line 29, in http_requests_task
+    raise RuntimeError("Forcing shutdown")
+RuntimeError: Forcing shutdown
 INFO:engin:stopping engin
 INFO:engin:shutdown complete
 ```
@@ -87,4 +100,4 @@ INFO:engin:shutdown complete
 Engin is heavily inspired by [Uber's Fx framework for Go](https://github.com/uber-go/fx)
 and the [Injector framework for Python](https://github.com/python-injector/injector).
 
-They are both great projects, check them out.
+They are both great projects, go check them out.

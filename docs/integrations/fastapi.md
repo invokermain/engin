@@ -75,28 +75,24 @@ reusable SQL session per request, we could use a nested dependency:
 from typing import Annotated, AsyncIterable
 
 from engin.extensions.fastapi import Inject
-from fastapi import Depends
 
 
 async def database_session(
-        database: Annotated[Database, Inject(Database)])
-
-    ) -> AsyncIterable[Session]:
+    database: Annotated[Database, Inject(Database)] 
+) -> AsyncIterable[Session]:
     with database.new_session() as session:
         yield session
-    session.commit()
+        session.commit() 
 
-    @ app.post("/{id}")
-    async
-
-    def add_item(session: Annotated[Session, Depends(database_session)]):
-        session.add(MyORMModel(...))
+@app.post("/{id}")
+async def add_item(session: Annotated[Session, Inject(database_session)]):
+    session.add(MyORMModel(...))
 ```
 
 
 ## Attaching Routers to Engin
 
-The usual way to declare an `APIRouter` is as a module level variable, for example:
+The idiomatic way to declare an `APIRouter` is as a module level variable, for example:
 
 ```python title="api.py"
 from fastapi import APIRouter
