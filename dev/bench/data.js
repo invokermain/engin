@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753009109627,
+  "lastUpdate": 1753013830840,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -393,6 +393,37 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000020090722421127977",
             "extra": "mean: 1.0021505162999853 msec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "bb8945909d268a50ebac22748b497fda3e154dda",
+          "message": "feat: add TypeNotProvidedError class",
+          "timestamp": "2025-07-20T13:16:30+01:00",
+          "tree_id": "163071f376e4d064b44c7fc943cef903c0499453",
+          "url": "https://github.com/invokermain/engin/commit/bb8945909d268a50ebac22748b497fda3e154dda"
+        },
+        "date": 1753013830500,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1008.940640515332,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000032755798275852295",
+            "extra": "mean: 991.1385861999121 usec\nrounds: 10000"
           }
         ]
       }
