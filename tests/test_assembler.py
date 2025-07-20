@@ -4,7 +4,7 @@ from typing import Annotated
 import pytest
 
 from engin import Assembler, Entrypoint, Invoke, Provide
-from engin.exceptions import NotInScopeError, ProviderError
+from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
 from tests.deps import int_provider, make_many_int, make_many_int_alt, make_str
 
 
@@ -70,13 +70,13 @@ async def test_assembler_get():
 async def test_assembler_with_unknown_type_raises_lookup_error():
     assembler = Assembler([])
 
-    with pytest.raises(LookupError):
+    with pytest.raises(TypeNotProvidedError):
         await assembler.build(str)
 
-    with pytest.raises(LookupError):
+    with pytest.raises(TypeNotProvidedError):
         await assembler.build(list[str])
 
-    with pytest.raises(LookupError):
+    with pytest.raises(TypeNotProvidedError):
         await assembler.assemble(Entrypoint(str))
 
 
@@ -105,7 +105,7 @@ async def test_annotations():
 
     assembler = Assembler([Provide(make_str_1), Provide(make_str_2)])
 
-    with pytest.raises(LookupError):
+    with pytest.raises(TypeNotProvidedError):
         await assembler.build(str)
 
     assert await assembler.build(Annotated[str, "1"]) == "bar"

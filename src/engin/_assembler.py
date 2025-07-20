@@ -10,7 +10,7 @@ from typing import Any, Generic, TypeVar, cast
 
 from engin._dependency import Dependency, Provide, Supply
 from engin._type_utils import TypeId
-from engin.exceptions import NotInScopeError, ProviderError
+from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
 
 LOG = logging.getLogger("engin")
 
@@ -111,7 +111,7 @@ class Assembler:
             type_: the type of the desired value to build.
 
         Raises:
-            LookupError: When no provider is found for the given type.
+            TypeNotProvidedError: When no provider is found for the given type.
             ProviderError: When a provider errors when trying to construct the type or
                 any of its dependent types.
 
@@ -123,7 +123,7 @@ class Assembler:
             return cast("T", self._assembled_outputs[type_id])
         if type_id.multi:
             if type_id not in self._multiproviders:
-                raise LookupError(f"no provider found for target type id '{type_id}'")
+                raise TypeNotProvidedError(type_id)
 
             out = []
             for provider in self._multiproviders[type_id]:
@@ -142,7 +142,7 @@ class Assembler:
             return out  # type: ignore[return-value]
         else:
             if type_id not in self._providers:
-                raise LookupError(f"no provider found for target type id '{type_id}'")
+                raise TypeNotProvidedError(type_id)
 
             provider = self._providers[type_id]
             if provider.scope and provider.scope not in _get_scope():
@@ -226,9 +226,7 @@ class Assembler:
                 # store default to prevent the warning appearing multiple times
                 self._multiproviders[type_id] = root_providers
             else:
-                available = sorted(str(k) for k in self._providers)
-                msg = f"Missing Provider for type '{type_id}', available: {available}"
-                raise LookupError(msg)
+                raise TypeNotProvidedError(type_id)
 
         # providers that must be satisfied to satisfy the root level providers
         resolved_providers = [

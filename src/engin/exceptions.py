@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 from engin._dependency import Provide
+from engin._type_utils import TypeId
 
 if TYPE_CHECKING:
     from engin._block import Block
@@ -9,12 +10,6 @@ if TYPE_CHECKING:
 class EnginError(Exception):
     """
     Base class for all custom exceptions in the Engin library.
-    """
-
-
-class AssemblerError(EnginError):
-    """
-    Base class for all custom exceptions raised by the Assembler.
     """
 
 
@@ -27,6 +22,25 @@ class InvalidBlockError(EnginError):
         self.block = block
         self.block_name = block.name or block.__name__
         self.message = f"block '{self.block_name}' is invalid, reason: '{reason}'"
+
+    def __str__(self) -> str:
+        return self.message
+
+
+class AssemblerError(EnginError):
+    """
+    Base class for all custom exceptions raised by the Assembler.
+    """
+
+
+class TypeNotProvidedError(AssemblerError):
+    """
+    Raised when the Assembler cannot assemble a type due to a missing Provider.
+    """
+
+    def __init__(self, type_id: TypeId) -> None:
+        self.type_id = type_id
+        self.message = f"no provider found for '{type_id}'"
 
     def __str__(self) -> str:
         return self.message
@@ -77,4 +91,5 @@ __all__ = [
     "InvalidBlockError",
     "NotInScopeError",
     "ProviderError",
+    "TypeNotProvidedError",
 ]
