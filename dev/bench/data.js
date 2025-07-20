@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1752941897452,
+  "lastUpdate": 1753009109627,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -362,6 +362,37 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000045754402528630514",
             "extra": "mean: 998.3635328003743 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "d8b506faaec0ac462dfd81c935943fd14ddc4167",
+          "message": "docs: general improvements + add supervisor & cli pages.",
+          "timestamp": "2025-07-20T11:57:48+01:00",
+          "tree_id": "2b73f2ed45f22e359396bb86a1b8e647a2975e94",
+          "url": "https://github.com/invokermain/engin/commit/d8b506faaec0ac462dfd81c935943fd14ddc4167"
+        },
+        "date": 1753009109091,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 997.854098496177,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000020090722421127977",
+            "extra": "mean: 1.0021505162999853 msec\nrounds: 10000"
           }
         ]
       }
