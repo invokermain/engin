@@ -61,8 +61,8 @@ class Engin:
        the Invoke options parameters are assembled.
     2. All Invocations are run sequentially in the order they were passed in to the Engin.
     3. Lifecycle Startup tasks registered by assembled dependencies are run sequentially.
-    4. The Engin waits for a stop signal, i.e. SIGINT or SIGTERM, or for something to
-       set the ShutdownSwitch event.
+    4. The Engin waits for a stop signal, i.e. SIGINT or SIGTERM, or a supervised task that
+       causes a shutdown.
     5. Lifecyce Shutdown tasks are run in the reverse order to the Startup order.
 
     Examples:

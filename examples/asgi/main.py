@@ -10,7 +10,9 @@ from examples.asgi.features.cats.block import CatBlock
 
 logging.basicConfig(level=logging.DEBUG)
 
-app = ASGIEngin(AppBlock(), DatabaseBlock(), CatBlock(), Supply(AppConfig(debug=True)))
+app = ASGIEngin(
+    AppBlock(), DatabaseBlock(), CatBlock(), Supply(AppConfig(debug=True), override=True)
+)
 
 
 if __name__ == "__main__":

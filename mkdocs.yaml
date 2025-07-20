@@ -31,8 +31,10 @@ nav:
       - Engin: "concepts/engin.md"
       - Providers: "concepts/providers.md"
       - Invocations: "concepts/invocations.md"
-      - Lifecycle: "concepts/lifecycle.md"
       - Blocks: "concepts/blocks.md"
+      - Lifecycle: "concepts/lifecycle.md"
+      - Supervisor: "concepts/supervisor.md"
+  - CLI Commands: "cli.md"
   - Integrations:
       - FastAPI: "integrations/fastapi.md"
   - Reference: "reference.md"
