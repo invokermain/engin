@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A new cli option `engin check` that validates whether you have any missing providers. 
 - Support for specifying `default-instance` in your `pyproject.toml` under `[tool.engin]`
   which is used as a default value for the `app` parameter when using the cli.
+- A new exception class: `TypeNotProvidedError`.
+
+### Changed
+
+- If a Provider is missing during Assembly, the Assembler now raises `TypeNotProvidedError`
+  instead of a `LookupError`.
 
 
 ## [0.0.20] - 2025-06-18

@@ -4,6 +4,7 @@ import typer
 from rich.console import Console
 
 from engin._cli._common import COMMON_HELP, get_engin_instance
+from engin.exceptions import TypeNotProvidedError
 
 cli = typer.Typer()
 
@@ -35,20 +36,11 @@ def check_dependencies(
     assembler = instance.assembler
     missing_providers = set()
 
-    # Check dependencies for all invocations
     for invocation in instance._invocations:
         for param_type_id in invocation.parameter_type_ids:
             try:
                 assembler._resolve_providers(param_type_id, set())
-            except LookupError:
-                missing_providers.add(param_type_id)
-
-    # Check dependencies for all providers
-    for provider in assembler.providers:
-        for param_type_id in provider.parameter_type_ids:
-            try:
-                assembler._resolve_providers(param_type_id, set())
-            except LookupError:
+            except TypeNotProvidedError:
                 missing_providers.add(param_type_id)
 
     if missing_providers:
