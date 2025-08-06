@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753037262362,
+  "lastUpdate": 1754480943744,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -455,6 +455,37 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00002681460401604746",
             "extra": "mean: 993.8282209999754 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "5ddc0d6c81441d19b9545779959512171385d8aa",
+          "message": "v0.1.0rc3: shutdown order tweak + add tutorial",
+          "timestamp": "2025-08-06T12:48:25+01:00",
+          "tree_id": "e5b8337c32fe6b4e0b266b4249b4f3f69b9f0eda",
+          "url": "https://github.com/invokermain/engin/commit/5ddc0d6c81441d19b9545779959512171385d8aa"
+        },
+        "date": 1754480943413,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1005.2766880871767,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000357855497105592",
+            "extra": "mean: 994.7510092000471 usec\nrounds: 10000"
           }
         ]
       }
