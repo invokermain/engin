@@ -46,7 +46,6 @@ def test_check_missing_dependencies():
     assert result.exit_code == 1
     assert "❌ Missing providers found:" in result.output
     assert "int" in result.output
-    assert "Available providers:" in result.output
 
 
 def test_check_complex_missing_dependencies():

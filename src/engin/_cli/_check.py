@@ -50,13 +50,6 @@ def check_dependencies(
         for missing_type in sorted_missing:
             console.print(f"  • {missing_type}", style="red")
 
-        available_providers = sorted(
-            str(provider.return_type_id) for provider in assembler.providers
-        )
-        console.print("\nAvailable providers:", style="yellow")
-        for available_type in available_providers:
-            console.print(f"  • {available_type}", style="yellow")
-
         raise typer.Exit(code=1)
     else:
         console.print("✅ All dependencies are satisfied!", style="green bold")

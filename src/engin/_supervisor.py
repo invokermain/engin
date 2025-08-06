@@ -63,7 +63,6 @@ class _SupervisorTask:
                 raise
             except Exception as err:
                 self.last_exception = err
-
                 if self.on_exception == OnException.IGNORE:
                     LOG.warning(
                         f"supervisor task '{self.name}' raised {type(err).__name__} "
@@ -122,6 +121,7 @@ class Supervisor:
         self._task_group = await anyio.create_task_group().__aenter__()
 
         for task in self._tasks:
+            LOG.info(f"supervising task: {task.name}")
             self._task_group.start_soon(task, name=task.name)
 
     async def __aexit__(
