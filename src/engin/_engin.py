@@ -179,7 +179,9 @@ class Engin:
             try:
                 async with supervisor:
                     await self._stop_requested_event.wait()
-                    await self._shutdown()
+
+                # shutdown after stopping supervised tasks
+                await self._shutdown()
             except BaseException:
                 await self._shutdown()
 
@@ -262,6 +264,7 @@ async def _stop_engin_on_signal(stop_requested_event: Event) -> None:
 
         # windows does not support signal_handlers, so this is the workaround
         def ctrlc_handler(sig: int, frame: FrameType | None) -> None:
+            LOG.debug(f"received {signal.SIGINT.name} signal")
             nonlocal should_stop
             if should_stop:
                 raise KeyboardInterrupt("Forced keyboard interrupt")

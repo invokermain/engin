@@ -6,8 +6,9 @@ theme:
     name: 'material'
     custom_dir: 'docs/overrides'
     features:
-      - navigation.instant
       - content.code.copy
+      - navigation.instant
+      - navigation.indexes
     palette:
       - scheme: 'default'
         media: '(prefers-color-scheme: light)'
@@ -27,6 +28,13 @@ edit_uri: ""
 
 nav:
   - Home: "index.md"
+  - Tutorial:
+      - "tutorial/index.md"
+      - "Setup an Empty Application": "tutorial/1_empty_application.md"
+      - "Create the Publisher": "tutorial/2_create_a_publisher.md"
+      - "Run the Application": "tutorial/3_run_the_application.md"
+      - "Create the Consumer": "tutorial/4_create_the_consumer.md"
+      - "Refactor the Valkey client": "tutorial/5_refactor_valkey_client.md"
   - Concepts:
       - Engin: "concepts/engin.md"
       - Providers: "concepts/providers.md"

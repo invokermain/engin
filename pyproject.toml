@@ -1,6 +1,6 @@
 [project]
 name = "engin"
-version = "0.1.0rc2"
+version = "0.1.0rc3"
 description = "An async-first modular application framework"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,6 +43,7 @@ dev = [
     "pytest-mock>=3.14.0",
     "pytest-benchmark>=5.1.0",
     "websockets>=15.0.1",
+    "valkey>=6.1.0",
 ]
 docs = [
     "mkdocs-material>=9.5.50",
@@ -78,7 +79,7 @@ ignore = [
 "**/src/*" = ["PT"]
 "**/tests/*" = ["S", "ANN"]
 # allow print statements in examples/scripts
-"**/examples/*" = ["T201"]
+"**/examples/*" = ["T201", "LOG015", "S", "SIM105"]
 "**/scripts/*" = ["T201"]
 
 
