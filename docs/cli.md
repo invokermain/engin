@@ -71,11 +71,6 @@ engin check myapp.main:engin
     ❌ Missing providers found:
       • httpx.AsyncClient
       • DatabaseConfig
-
-    Available providers:
-      • str
-      • engin._assembler.Assembler
-      • engin._lifecycle.Lifecycle
     ```
 
 ### engin inspect

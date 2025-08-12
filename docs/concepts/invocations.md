@@ -4,7 +4,7 @@ Invocations define the behaviour of your application, without any Invocations
 your application will not do anything.
 
 Like providers, invocations are functions that take one or more dependencies as
-parameters, but they should always return None as the return value will not used by Engin.
+parameters, but they should always return None as the return value will not be used by Engin.
 
 As part of the Engin's startup sequence, all declared invocations will be called
 sequentially in the order they were registered.
@@ -113,7 +113,7 @@ Invocations can use any types as long as they have the matching providers.
 
 ```python
 import asyncio
-from engin import Engin, Invoke
+from engin import Engin, Invoke, Provide
 
 # define a constructor
 def name_factory() -> str:
@@ -123,7 +123,7 @@ def print_hello(name: str) -> None:
    print(f"hello {name}!")
 
 # register it as a invocation with the Engin
-engin = Engin(Provide(name_factory()), Invoke(hello_world))
+engin = Engin(Provide(name_factory), Invoke(print_hello))
 
 # run your application
 asyncio.run(engin.run())  # hello Dmitrii!

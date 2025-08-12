@@ -20,7 +20,7 @@ The Engin framework gives you:
 
 - A fully-featured dependency injection system.
 - A robust application runtime with lifecycle hooks and supervised background tasks.
-- Zero boiler-plate code reuse across applications.
+- Zero boilerplate code reuse across applications.
 - Integrations for other frameworks such as FastAPI.
 - Full async support.
 - CLI commands to aid local development.

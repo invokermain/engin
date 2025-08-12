@@ -8,13 +8,13 @@ connection pool on startup, and gracefully release the connections on shutdown.
 Doing this yourself can be tricky and is application dependent: most will not have any
 special support for this and will expect you to manage your lifecycle concerns in your
 entrypoint function, leading to unwieldy code in larger applications, whilst other
-types application might expected you to translate the lifecyle tasks into something they
+types application might expected you to translate the lifecycle tasks into something they
 offer, e.g. an ASGI server would expect you to manage this via its lifespan. In both cases
 you end up managing lifecycle in a completely different place to where you declare your
 objects, which make the codebase more complicated to understand.
 
 Luckily, engin makes declaring lifecycle tasks a breeze, and it can be done in the same
-provider that build your object keeping your code nicely collocated.
+provider that builds your object keeping your code nicely collocated.
 
 ## The Lifecycle type
 
@@ -47,9 +47,9 @@ def httpx_client(lifecycle: Lifecycle) -> AsyncClient:
     return client
 ```
 
-### 2. Explict startup & shutdown methods
+### 2. Explicit startup & shutdown methods
 
-If your type exposes meathods that must be called as part of the lifecycle, e.g. `start()`
+If your type exposes methods that must be called as part of the lifecycle, e.g. `start()`
 & `stop()`, then `lifecycle.hook(on_start=..., on_stop=...)` is the way.
 
 Let's look at an example using `piccolo.engine.PostgresEngin`:
@@ -58,12 +58,12 @@ Let's look at an example using `piccolo.engine.PostgresEngin`:
 from engin import Lifecycle
 from piccolo.engine import PostgresEngine
 
-def postgres_engine(lifecyle: Lifecycle) -> PostgresEngine:
+def postgres_engine(lifecycle: Lifecycle) -> PostgresEngine:
     db_engine = PostgresEngine(...)  # fill in actual connection details
 
-    lifecyle.hook(
-        on_start=db_engine.start_connection_pool(),
-        on_stop=db_engine.close_connection_pool(),
+    lifecycle.hook(
+        on_start=db_engine.start_connection_pool,
+        on_stop=db_engine.close_connection_pool,
     )
 
     return db_engine
@@ -79,6 +79,7 @@ therefore we want to manage it as a task.
 
 ```python
 import asyncio
+from contextlib import asynccontextmanager
 from engin import Lifecycle
 from some_package import BlockingAsyncWorker
 
@@ -96,3 +97,7 @@ def blocking_worker(lifecycle: Lifecycle) -> BlockingWorker:
 
     return worker
 ```
+
+!!! note
+
+    The above case is only given as a reference, running background tasks should be done via the `Supervisor` depedency.

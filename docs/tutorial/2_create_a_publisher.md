@@ -24,22 +24,30 @@ class Publisher:
 
 !!! note
     The Publisher asking for the Valkey instance when being initialised is a form of
-    [Dependency Injection](https://en.wikipedia.org/wiki/Dependency_injection) (specifically
-    Constructor injection). Doing this separates out the concerns of configuring the client and
+    [Dependency Injection](https://en.wikipedia.org/wiki/Dependency_injection), specifically
+    Constructor injection. Doing this separates out the concerns of configuring the client and
     using it.
 
 
-Let's register the Publisher with our engin. We can do this by making a simple factory function
-below the `Publisher`.
+Let's register the `Publisher` with our application so we can use it later. We do this by:
+
+1. Creating a factory function which is responsible for creating the `Publisher` instance.
+2. Registering this factory function with our `Engin` instance as a "provider".
+
+We can write a simple factory function below the `Publisher` class. Notice that the factory
+function also asks for the `Valkey` client to be injected. We will provide the `Valkey`
+dependency later and Engin will automatically take care of giving it to the
+`publisher_factory`.
 
 ```python
 def publisher_factory(valkey: Valkey) -> Publisher:
     return Publisher(valkey=valkey)
 ```
 
-This isn't enough though as we need to tell the engin how to run the publisher as well. We want
-our engin to call `Publisher.run` when the application is run, we can do that by using the
-`Supervisor` type which is always provided by Engin.
+We need to tell the application how to run the `Publisher` as well. We want Engin to call
+`Publisher.run` when the application is run which we can do by using the `Supervisor`
+dependency. The `Supervisor` is a dependency that is provided by Engin and it can be used to
+supervise long running tasks.
 
 ```python
 def publisher_factory(valkey: Valkey, supervisor: Supervisor) -> Publisher:
@@ -58,7 +66,7 @@ def publisher_factory(valkey: Valkey, supervisor: Supervisor) -> Publisher:
     but you can also choose for the error to be ignored or the task to be restarted.
 
 Now we just need to register our `publisher_factory` with the engin. We can do this using the
-`Provide` marker class which allows us to "provide a dependency" to the engin.
+`Provide` marker class which allows us to "provide" a dependency to our application.
 
 ```python title="app.py"
 # ... existing code ...
@@ -69,7 +77,9 @@ from examples.tutorial.publisher import publisher_factory
 engin = Engin(Provide(publisher_factory))
 ```
 
-Our publisher requires a Valkey client, so let's create a factory for that too.
+Our `Publisher` requires a `Valkey` client, so let's create a factory for that too, we can
+hardcode the url to make this simple for now.
+
 
 ```python title="valkey_client.py"
 from valkey.asyncio import Valkey
@@ -78,7 +88,7 @@ def valkey_client_factory() -> Valkey:
     return Valkey.from_url("valkey://localhost:6379")
 ```
 
-And let's provide this factory to the engin.
+And let's provide this dependency to the application as well.
 
 ```python title="app.py"
 # ... existing code ...
