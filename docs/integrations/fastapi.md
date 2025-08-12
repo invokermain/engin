@@ -1,6 +1,6 @@
 # FastAPI
 
-Engin ships with a FastAPI integration that is available under the `engin.ext.fastapi`
+Engin ships with a FastAPI integration that is available under the `engin.extensions.fastapi`
 module. The integration allows one to write idiomatic FastAPI code whilst leveraging Engin
 for Dependency Injection and modularising the application.
 
@@ -37,7 +37,7 @@ instance that you provided.
 !!!tip
 
     It is also easy to integrate Engin with an existing FastAPI application by using the
-    `engin_to_lifespan` function in the `engin.ext.asgi` module.
+    `engin_to_lifespan` function in the `engin.extensions.asgi` module.
 
 
 ## Dependency Injection
@@ -85,7 +85,7 @@ async def database_session(
         session.commit() 
 
 @app.post("/{id}")
-async def add_item(session: Annotated[Session, Inject(database_session)]):
+async def add_item(session: Annotated[Session, Depends(database_session)]):
     session.add(MyORMModel(...))
 ```
 

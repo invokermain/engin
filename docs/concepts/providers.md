@@ -1,6 +1,6 @@
 # Providers
 
-Providers are the factories of your application, they are reponsible for the construction
+Providers are the factories of your application, they are responsible for the construction
 of the objects that your application needs.
 
 Remember, the Engin only calls the providers that are necessary to run your application.
@@ -73,7 +73,6 @@ greeter = await engin.assembler.build(Greeter)
 
 greeter.greet("Bob")  # hello, Bob!
 ```
-
 
 ## Providers are only called when required
 
@@ -187,3 +186,88 @@ a_string = await engin.assembler.build(str)
 
 print(a_string)  # hello
 ```
+
+## Overriding providers from the same package
+
+Sometimes you need to replace an existing provider for the same type. If both providers
+originate from the same Python package, overrides must be explicit by setting
+`override=True` on the replacement provider. This prevents accidental overrides.
+
+```python
+from engin import Engin, Provide, Supply
+
+
+def make_number() -> int:
+    return 1
+
+
+def make_number_override() -> int:
+    return 2
+
+
+engin = Engin(
+    Provide(make_number),
+    # Explicitly override the previous provider from the same package
+    Provide(make_number_override, override=True),
+)
+
+# this will return 2
+await engin.assembler.build(int)
+```
+
+You can also use `override=True` with `Supply`, and with the `@provide` decorator inside `Block`
+classes: `@provide(override=True)`.
+
+!!!tip
+
+    Overriding providers from a different package is allowed implicitly. Explicit overrides are
+    only required when replacing a provider defined in the same package. Adding or overriding a
+    provider clears previously assembled values so subsequent builds use the new provider.
+
+    Multiproviders (providers that return lists) are not replaced; new ones are always appended.
+
+
+## Provider scopes
+
+Providers can be associated with a named scope. A scoped provider can only be used while that
+scope is active, and its cached value is cleared when the scope exits.
+
+To set a scope, pass `scope="..."` to `Provide`, or use the `@provide(scope=...)` decorator
+when defining providers inside a `Block`.
+
+```python
+from engin import Engin, Provide
+import time
+
+
+def make_timestamp() -> int:
+    return time.time_ns()
+
+
+# Register a provider that is only valid in the "request" scope
+engin = Engin(Provide(make_timestamp, scope="request"))
+
+# Outside the scope this will raise an error
+# await engin.assembler.build(int)  # NotInScopeError
+
+# Within the scope the value can be built and is cached for the duration
+with engin.assembler.scope("request"):
+    t1 = await engin.assembler.build(int)
+    t2 = await engin.assembler.build(int)
+    assert t1 == t2  # cached within the active scope
+
+# After leaving the scope, the scoped cache is cleared
+# await engin.assembler.build(int)  # NotInScopeError
+```
+
+Scopes compose via a stack. Nested scopes can be entered with additional
+`with engin.assembler.scope("..."):` contexts. When a scope exits, any values produced by
+providers in that scope are removed from the cache, while values produced by
+unscoped providers remain cached.
+
+!!!note
+
+    In web applications built with `ASGIEngin`, each request is automatically wrapped in
+    `with engin.assembler.scope("request"):`. Marking providers with `scope="request"` yields
+    per-request values that are reused within the same request and discarded at the end of the
+    request.

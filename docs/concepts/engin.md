@@ -9,7 +9,8 @@ The Engin class manages your application's complete lifecycle, when ran it will:
 3. Run all lifecycle startup tasks that were registered by assembled dependencies sequentially.
 4. Start any supervised background tasks.
 5. Wait for a shutdown signal, SIGINT or SIGTERM, or for a supervised task to cause a shutdown.
-6. Run all corresponding lifecycle shutdown tasks in the reverse order to the startup order.
+6. Stop any supervised background tasks that are still running.
+7. Run all corresponding lifecycle shutdown tasks in the reverse order to the startup order.
 
 
 ## Creating an Engin
@@ -17,15 +18,14 @@ The Engin class manages your application's complete lifecycle, when ran it will:
 Instantiate an Engin with any combination of options, i.e. providers, invocations, and blocks:
 
 ```python
-from engin import Engin, Provide, Invoke, Supervisor
-
+from engin import Engin, Entrypoint, Provide, Supervisor
 
 def my_service_factory(supervisor: Supervisor) -> MyService:
     my_service = MyService()
     supervisor.supervise(my_service.run)
     return my_service
 
-engin = Engin(Provide(build_service), Entrypoint(MyService))
+engin = Engin(Provide(my_service_factory), Entrypoint(MyService))
 ```
 
 ## Running your application
@@ -41,7 +41,7 @@ your application:
 ```python
 import asyncio
 
-await asyncio.run(engin.run())
+asyncio.run(engin.run())
 ```
 
 

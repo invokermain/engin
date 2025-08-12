@@ -27,10 +27,11 @@ Blocks have a class attribute named `options` which can be used to include exist
 options.
 
 ```python
+import asyncio
 from engin import Engin, Block, Invoke, Provide, Supply
 
 
-def print_string(self, string: str) -> None:
+def print_string(string: str) -> None:
    print(string)
 
    
@@ -44,13 +45,13 @@ class ExampleBlock(Block):
 # register it as a provider with the Engin
 engin = Engin(ExampleBlock())
 
-await engin.run()  # prints 'hello'
+asyncio.run(engin.run())  # prints 'hello'
 ```
 
 !!!tip
 
     Blocks are themselves valid options, so Blocks can include other Blocks as options. This
-    compisitional approach can help you build and manage larger applications.
+    compositional approach can help you build and manage larger applications.
 
 
 ## Defining Providers & Invocations in the Block
