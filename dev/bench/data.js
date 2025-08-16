@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1755359479745,
+  "lastUpdate": 1755360659373,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -517,6 +517,37 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.000042605726854202684",
             "extra": "mean: 901.6819811007736 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "95508eab3f45019a724fee048552b7a329244df8",
+          "message": "v0.1.0: update CHANGELOG.md",
+          "timestamp": "2025-08-16T17:10:10+01:00",
+          "tree_id": "6c7e2f064be7764dd8c98545b1cf7317832f0c15",
+          "url": "https://github.com/invokermain/engin/commit/95508eab3f45019a724fee048552b7a329244df8"
+        },
+        "date": 1755360659064,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_bench_assembler.py::test_assembler_benchmark",
+            "value": 1036.583212383458,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000020979924147110508",
+            "extra": "mean: 964.7078865001674 usec\nrounds: 10000"
           }
         ]
       }
