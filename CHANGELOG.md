@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - UNRELEASED
+## [0.1.0] - 2025-08-16
 
 ### Added
 
-- Supervisor class which can safely supervise long running tasks.
+- `Supervisor` class which can safely supervise long running tasks.
 - A new cli option `engin check` that validates whether you have any missing providers. 
 - Support for specifying `default-instance` in your `pyproject.toml` under `[tool.engin]`
   which is used as a default value for the `app` parameter when using the cli.
@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - If a Provider is missing during Assembly, the Assembler now raises `TypeNotProvidedError`
   instead of a `LookupError`.
+- `engin graph` has improved visualisations and options.
+- `engin check` does not list all available providers anymore.
 
 
 ## [0.0.20] - 2025-06-18
