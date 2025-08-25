@@ -24,6 +24,11 @@ def test_provide_discriminates_multi():
     assert provider.return_type_id.multi
 
 
+def test_provide_with_non_callable_type_shows_helpful_error():
+    with pytest.raises(ValueError, match="Supply"):
+        Provide([3])
+
+
 def test_supply_singular():
     class Foo: ...
 

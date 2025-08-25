@@ -19,10 +19,6 @@ async def endless_task():
     await asyncio.sleep(999)
 
 
-async def block_task():
-    await asyncio.sleep(999)
-
-
 @dataclass
 class ClassHappyTask:
     async def run(self) -> None:
@@ -111,3 +107,25 @@ async def test_supervisor_is_cancellable():
 
     await supervisor.__aenter__()
     await asyncio.wait_for(supervisor.__aexit__(None, None, None), 0.1)
+
+
+async def test_supervisor_task_with_shutdown_hook():
+    @dataclass(kw_only=True)
+    class SpecialTask:
+        happy: bool = False
+
+        async def run(self) -> None:
+            return None
+
+        async def shutdown(self) -> None:
+            self.happy = True
+
+    task = SpecialTask()
+    supervisor = Supervisor()
+
+    supervisor.supervise(task.run, shutdown_hook=task.shutdown)
+
+    async with supervisor:
+        pass
+
+    assert task.happy

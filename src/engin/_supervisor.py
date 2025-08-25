@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 
 LOG = logging.getLogger("engin")
 
-TaskFactory: TypeAlias = Callable[[], Awaitable[None]]
+AsyncFunction: TypeAlias = Callable[[], Awaitable[None]]
 
 
 class OnException(Enum):
@@ -41,15 +41,16 @@ class _SupervisorTask:
     """
     Attributes:
         - factory: a coroutine function that can create the task.
-        - on_exception: determines the behaviour when task raises an exception.
+        - on_exception: determines the behaviour when the task raises an exception.
         - complete: will be set to true if task stops for any reason except cancellation.
         - last_exception: the last exception raised by the task.
     """
 
-    factory: TaskFactory
+    factory: AsyncFunction
     on_exception: OnException
     complete: bool = False
     last_exception: Exception | None = None
+    shutdown_hook: AsyncFunction | None = None
 
     async def __call__(self) -> None:
         # loop to allow for restarting erroring tasks
@@ -106,9 +107,17 @@ class Supervisor:
         self._task_group: TaskGroup | None = None
 
     def supervise(
-        self, func: TaskFactory, *, on_exception: OnException = OnException.SHUTDOWN
+        self,
+        func: AsyncFunction,
+        *,
+        on_exception: OnException = OnException.SHUTDOWN,
+        shutdown_hook: AsyncFunction | None = None,
     ) -> None:
-        self._tasks.append(_SupervisorTask(factory=func, on_exception=on_exception))
+        self._tasks.append(
+            _SupervisorTask(
+                factory=func, on_exception=on_exception, shutdown_hook=shutdown_hook
+            )
+        )
 
     @property
     def empty(self) -> bool:
@@ -132,6 +141,10 @@ class Supervisor:
         /,
     ) -> None:
         if self._task_group:
+            for task in self._tasks:
+                if task.shutdown_hook is not None:
+                    LOG.debug(f"supervised task shutdown hook: {task.name}")
+                    await task.shutdown_hook()
             if not self._task_group.cancel_scope.cancel_called:
                 self._task_group.cancel_scope.cancel()
             await self._task_group.__aexit__(exc_type, exc_value, traceback)

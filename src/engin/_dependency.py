@@ -171,6 +171,9 @@ class Provide(Dependency[Any, T]):
             override: (optional) allow this provider to override other providers for the
                 same type from the same package.
         """
+        if not callable(factory):
+            msg = "Provided value is not callable, did you mean to use Supply instead?"
+            raise ValueError(msg)
         super().__init__(func=factory)
         self._scope = scope
         self._override = override

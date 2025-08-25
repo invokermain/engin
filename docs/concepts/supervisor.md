@@ -62,3 +62,15 @@ supervisor.supervise(
     on_exception=OnException.IGNORE
 )
 ```
+
+## Task Shutdown Hook
+
+When the Engin is shutdown (e.g. when receiving a SIGTERM) the Supervisor will cancel all
+supervised tasks using the underlying async backend cancellation mechanism, for
+example by raising a `CancellationError` for `asyncio` projects. This is OK for the
+majority of cases, however some supervised tasks might manage their own shutdown procedure
+and do not handle cancellation well. For these cases the `Supervisor` exposes a
+`shutdown_hook` which will be called just before the task is cancelled.
+
+To set a `shutdown_hook` simply pass in the relevant parameter when calling
+`Supervisor.supervise`.
