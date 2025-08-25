@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## UNRELEASED
+
+### Added
+
+- `Supevisor` now has a shutdown hook option for supervised tasks.
+
+### Changed
+
+- `Provide` now raises a helpful error message when it is called with a static value
+  suggesting to use `Supply` instead.
+
+
 ## [0.1.0] - 2025-08-16
 
 ### Added
