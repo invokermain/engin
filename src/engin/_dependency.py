@@ -184,7 +184,9 @@ class Provide(Dependency[Any, T]):
         if self._explicit_type is not None:
             self._signature = self._signature.replace(return_annotation=self._explicit_type)
 
-        self._is_multi = typing.get_origin(self._return_type) is list
+        self._is_multi = (
+            typing.get_origin(self._return_type) is list or self._return_type is list
+        )
 
         # Validate that the provider does to depend on its own output value, as this will
         # cause a recursion error and is undefined behaviour wise.
@@ -198,9 +200,11 @@ class Provide(Dependency[Any, T]):
         if self._is_multi:
             args = typing.get_args(self._return_type)
             if len(args) != 1:
-                raise ValueError(
-                    f"A multiprovider must be of the form list[X], not '{self._return_type}'"
+                msg = (
+                    "A multiprovider must be of the form list[X], not "
+                    f"'{self._return_type_id}'"
                 )
+                raise ValueError(msg)
 
     @property
     def return_type(self) -> type[T]:

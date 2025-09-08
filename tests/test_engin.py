@@ -3,7 +3,10 @@ from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from datetime import datetime
 
+import pytest
+
 from engin import Engin, Entrypoint, Invoke, Lifecycle, Provide
+from engin.exceptions import EnginError
 from tests.deps import ABlock
 
 
@@ -45,6 +48,19 @@ async def test_engin():
 
     await engin.start()
     await engin.stop()
+
+
+async def test_engin_run_twice():
+    engin = Engin()
+
+    run_task = asyncio.create_task(engin.run())
+
+    await asyncio.sleep(0.01)
+
+    with pytest.raises(EnginError, match="unable to start"):
+        await engin.run()
+
+    del run_task
 
 
 async def test_engin_with_block():
