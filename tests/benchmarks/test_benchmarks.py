@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from engin import Assembler, Provide
+from engin import Assembler, Engin, Entrypoint, Provide
 
 
 class A: ...
@@ -82,25 +82,26 @@ def provide_g_many(a: A, b: B, c: C, d: D, e: E, f: F) -> list[Any]:
     return [G()]
 
 
-async def main() -> None:
-    assembler = Assembler(
-        [
-            Provide(provide_a),
-            Provide(provide_b),
-            Provide(provide_c),
-            Provide(provide_d),
-            Provide(provide_e),
-            Provide(provide_f),
-            Provide(provide_g),
-            Provide(provide_a_many),
-            Provide(provide_b_many),
-            Provide(provide_c_many),
-            Provide(provide_d_many),
-            Provide(provide_e_many),
-            Provide(provide_f_many),
-            Provide(provide_g_many),
-        ]
-    )
+PROVIDERS = [
+    Provide(provide_a),
+    Provide(provide_b),
+    Provide(provide_c),
+    Provide(provide_d),
+    Provide(provide_e),
+    Provide(provide_f),
+    Provide(provide_g),
+    Provide(provide_a_many),
+    Provide(provide_b_many),
+    Provide(provide_c_many),
+    Provide(provide_d_many),
+    Provide(provide_e_many),
+    Provide(provide_f_many),
+    Provide(provide_g_many),
+]
+
+
+async def bench_assembler() -> None:
+    assembler = Assembler(PROVIDERS)
     await assembler.build(G)
 
     # reset cache
@@ -109,6 +110,17 @@ async def main() -> None:
     await assembler.build(list[Any])
 
 
+async def bench_engin() -> None:
+    engin = Engin(*PROVIDERS, Entrypoint(G))
+    await engin.start()
+    await engin.stop()
+
+
 @pytest.mark.benchmark(min_rounds=10000, warmup="on")
-def test_assembler_benchmark(aio_benchmark):
-    aio_benchmark(main)
+def test_bench_assembler(aio_benchmark):
+    aio_benchmark(bench_assembler)
+
+
+@pytest.mark.benchmark(min_rounds=10000, warmup="on")
+def test_bench_engin(aio_benchmark):
+    aio_benchmark(bench_engin)
