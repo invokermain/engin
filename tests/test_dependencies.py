@@ -95,6 +95,14 @@ def test_provider_cannot_depend_on_self():
         Provide(invalid_provider_2)
 
 
+def test_provider_with_invalid_list_type():
+    def invalid(a: int) -> list:
+        return []
+
+    with pytest.raises(ValueError, match=r"list\[X\]"):
+        Provide(invalid)
+
+
 def test_provides_implicit_overrides_providers():
     provide_a = int_provider()
     provide_b = int_provider()
