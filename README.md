@@ -14,7 +14,7 @@ Engin is a lightweight application framework powered by dependency injection, it
 you build and maintain large monoliths and many microservices.
 
 
-## Feature
+## Features
 
 The Engin framework gives you:
 
@@ -101,3 +101,8 @@ Engin is heavily inspired by [Uber's Fx framework for Go](https://github.com/ube
 and the [Injector framework for Python](https://github.com/python-injector/injector).
 
 They are both great projects, go check them out.
+
+## Benchmarks
+
+Automated benchmarks for the Engin framework can be viewed
+[here](https://invokermain.github.io/engin/dev/bench/).
