@@ -8,7 +8,7 @@ from contextlib import AsyncExitStack
 from enum import Enum
 from itertools import chain
 from types import FrameType
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from anyio import create_task_group, open_signal_receiver
 
@@ -18,8 +18,10 @@ from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._option import Option
 from engin._supervisor import Supervisor
-from engin._type_utils import TypeId
 from engin.exceptions import EnginError
+
+if TYPE_CHECKING:
+    from engin._type_utils import TypeId
 
 _OS_IS_WINDOWS = os.name == "nt"
 LOG = logging.getLogger("engin")
@@ -107,12 +109,9 @@ class Engin:
         self._stop_requested_event = Event()
         self._stop_complete_event = Event()
         self._exit_stack = AsyncExitStack()
-        self._assembler = Assembler([])
         self._async_context_run_task: asyncio.Task | None = None
 
-        self._providers: dict[TypeId, Provide] = {
-            TypeId.from_type(Assembler): Supply(self._assembler),
-        }
+        self._providers: dict[TypeId, Provide] = {}
         self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
         self._invocations: list[Invoke] = []
 
@@ -120,10 +119,12 @@ class Engin:
         for option in chain(self._LIB_OPTIONS, options):
             option.apply(self)
 
-        multi_providers = [p for multi in self._multiproviders.values() for p in multi]
-
-        for provider in chain(self._providers.values(), multi_providers):
-            self._assembler.add(provider)
+        # initialise Assembler
+        self._assembler = Assembler.from_mapped_providers(
+            providers=self._providers,
+            multiproviders=self._multiproviders,
+        )
+        self._assembler.add(Supply(self._assembler))
 
     @property
     def assembler(self) -> Assembler:

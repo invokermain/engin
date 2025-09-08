@@ -8,6 +8,8 @@ from inspect import BoundArguments, Signature
 from types import TracebackType
 from typing import Any, Generic, TypeVar, cast
 
+from typing_extensions import Self
+
 from engin._dependency import Dependency, Provide, Supply
 from engin._type_utils import TypeId
 from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
@@ -75,6 +77,34 @@ class Assembler:
                 self._providers[type_id] = provider
             else:
                 self._multiproviders[type_id].append(provider)
+
+    @classmethod
+    def from_mapped_providers(
+        cls,
+        providers: dict[TypeId, Provide[Any]],
+        multiproviders: dict[TypeId, list[Provide[list[Any]]]],
+    ) -> Self:
+        """
+        Create an Assembler from pre-mapped providers.
+
+        This method is only exposed for performance reasons in the case that Providers
+        have already been mapped, it is recommended to use the `__init__` method if this
+        is no the case.
+
+        Args:
+            providers: a dictionary of Providers with the Provider's `return_type_id` as
+              the key.
+            multiproviders: a dictionary of list of Providers with the Provider's
+              `return_type_id` as key. All Providers in the given list must be for the
+              related `return_type_id`.
+
+        Returns:
+            An Assembler instance.
+        """
+        assembler = cls(tuple())  # noqa: C408
+        assembler._providers = providers
+        assembler._multiproviders = multiproviders
+        return assembler
 
     @property
     def providers(self) -> Sequence[Provide[Any]]:
