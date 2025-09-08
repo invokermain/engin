@@ -2,7 +2,6 @@ name: Benchmark Main
 
 on:
   push:
-    branches: [main]
 
 env:
   UV_FROZEN: "1"
@@ -34,6 +33,7 @@ jobs:
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
+        if: contains('refs/heads/main', github.ref)
         with:
           tool: 'pytest'
           output-file-path: bench.json
