@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1757341937349,
+  "lastUpdate": 1757346766548,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -615,6 +615,43 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00008551927341723143",
             "extra": "mean: 893.5048821000591 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "="
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "60b8ccf0b2643421ca0e067925f00066cb658145",
+          "message": "perf: add Assembler.from_mapped_providers method",
+          "timestamp": "2025-09-08T17:52:00+02:00",
+          "tree_id": "933029598496d6b1dbb65fe35662515d5ec3bb9c",
+          "url": "https://github.com/invokermain/engin/commit/60b8ccf0b2643421ca0e067925f00066cb658145"
+        },
+        "date": 1757346766170,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2379.6493569204736,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000026334011707069354",
+            "extra": "mean: 420.2299793000215 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1148.8970493198408,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00008026104758819838",
+            "extra": "mean: 870.4000071999579 usec\nrounds: 10000"
           }
         ]
       }
