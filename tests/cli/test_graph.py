@@ -1,4 +1,3 @@
-from fastapi import APIRouter
 from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
@@ -7,21 +6,12 @@ from engin._cli._graph import cli
 from tests.deps import ABlock
 
 
-def invoke_something(route: APIRouter) -> None: ...
-
-
-api_router = APIRouter()
-
-
-@api_router.get("/hello")
-def get_hello() -> str:
-    return "hello"
+def invoke_something(data: list[str]) -> None: ...
 
 
 engin = Engin(
     ABlock,
     Supply(["3"]),
-    Supply(api_router),
     Invoke(invoke_something),
     Entrypoint(list[str]),
 )
