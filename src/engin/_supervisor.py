@@ -5,10 +5,11 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
 from types import TracebackType
-from typing import TypeAlias, assert_never
+from typing import TypeAlias
 
 import anyio
 from anyio import get_cancelled_exc_class
+from typing_extensions import assert_never
 
 if typing.TYPE_CHECKING:
     from anyio.abc import TaskGroup

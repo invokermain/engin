@@ -1,11 +1,11 @@
 import importlib
 import sys
 from pathlib import Path
-from typing import Never
 
 import typer
 from rich import print
 from rich.panel import Panel
+from typing_extensions import Never
 
 from engin import Engin
 
