@@ -9,12 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `Supevisor` now has a shutdown hook option for supervised tasks.
+- `Supervisor` now has a shutdown hook option for supervised tasks.
 
 ### Changed
 
 - `Provide` now raises a helpful error message when it is called with a static value
   suggesting to use `Supply` instead.
+- Tests are now ran against all support Python versions and operating systems.
+- Improved signal handling code for Windows OS and added handler for SIGBREAK.
+
+### Fixed
+
+- Replaced Python 3.10 unsupported `typing` imports with imports from `typing_extensions`.
 
 
 ## [0.1.0] - 2025-08-16
