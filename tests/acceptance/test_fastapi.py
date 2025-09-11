@@ -1,4 +1,4 @@
-import time
+import asyncio
 from typing import Annotated
 
 import pytest
@@ -105,8 +105,12 @@ async def test_engin_to_lifespan():
 
 
 async def test_asgi_request_scope():
+    factory_call_count = 0
+
     def scoped_factory() -> int:
-        return time.time_ns()
+        nonlocal factory_call_count
+        factory_call_count += 1
+        return factory_call_count
 
     def child_factory(some: int) -> str:
         return str(some)
@@ -118,11 +122,16 @@ async def test_asgi_request_scope():
         Supply([ROUTER]),
     )
 
-    with starlette.testclient.TestClient(app) as client:
-        first_call = client.get("http://127.0.0.1:8000/inject").json()
-        second_call = client.get("http://127.0.0.1:8000/inject").json()
+    async def _request() -> int:
+        result = await asyncio.to_thread(client.get, "http://127.0.0.1:8000/inject")
+        return result.json()
 
-        # these should differ as the factory is request scoped to each request
-        assert first_call != second_call
+    with starlette.testclient.TestClient(app) as client:
+        results = await asyncio.gather(*[_request() for _ in range(100)])
+
+        # every result should be unique as the factory is request scoped to each request
+        assert len(set(results)) == len(results)
+        # we expect the factory to have been called 100 times
+        assert factory_call_count == 100
 
         client.get("http://127.0.0.1:8000/inject2")
