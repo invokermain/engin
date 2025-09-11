@@ -1,3 +1,8 @@
+import threading
+import time
+from datetime import datetime
+
+import requests
 from pytest_mock import MockerFixture
 from typer.testing import CliRunner
 
@@ -6,7 +11,7 @@ from engin._cli._graph import cli
 from tests.deps import ABlock
 
 
-def invoke_something(data: list[str]) -> None: ...
+def invoke_something(data: datetime) -> None: ...
 
 
 engin = Engin(
@@ -19,9 +24,39 @@ runner = CliRunner()
 
 
 def test_cli_graph(mocker: MockerFixture) -> None:
-    mocker.patch("engin._cli._graph.wait_for_interrupt", side_effect=KeyboardInterrupt)
-    result = runner.invoke(app=cli, args=["tests.cli.test_graph:engin"])
-    assert result.exit_code == 0
+    cli_thread = None
+    cli_result = None
+    interrupt_event = threading.Event()
+
+    def run_cli():
+        nonlocal cli_result
+        cli_result = runner.invoke(app=cli, args=["tests.cli.test_graph:engin"])
+
+    def mock_wait_for_interrupt():
+        interrupt_event.wait()
+        raise KeyboardInterrupt
+
+    mocker.patch("engin._cli._graph.wait_for_interrupt", side_effect=mock_wait_for_interrupt)
+
+    try:
+        cli_thread = threading.Thread(target=run_cli)
+        cli_thread.start()
+
+        time.sleep(0.5)
+
+        response = requests.get("http://localhost:8123")
+        assert response.status_code == 200
+
+        interrupt_event.set()
+        cli_thread.join(timeout=2)
+
+    finally:
+        if cli_thread and cli_thread.is_alive():
+            interrupt_event.set()
+            cli_thread.join(timeout=1)
+
+    assert cli_result is not None
+    assert cli_result.exit_code == 0
 
 
 def test_cli_invalid_app_path() -> None:
