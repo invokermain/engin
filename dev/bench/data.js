@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1757590102218,
+  "lastUpdate": 1757592143096,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -726,6 +726,43 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00011932549127688557",
             "extra": "mean: 895.4009015999752 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "="
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "1ab0b8099f00d81d7bfd02d7b20068cd789edc77",
+          "message": "tests: add dedicated tests for asgi extension",
+          "timestamp": "2025-09-11T14:01:35+02:00",
+          "tree_id": "136546081f03c26faba6cb0606538f19b2312c7f",
+          "url": "https://github.com/invokermain/engin/commit/1ab0b8099f00d81d7bfd02d7b20068cd789edc77"
+        },
+        "date": 1757592142603,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2403.8257034145663,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000030131076388608045",
+            "extra": "mean: 416.0035390999972 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1146.7665904762982,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00009548162257604332",
+            "extra": "mean: 872.0170331999817 usec\nrounds: 10000"
           }
         ]
       }
