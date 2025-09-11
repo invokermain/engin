@@ -105,8 +105,13 @@ async def test_supervisor_is_cancellable():
 
     supervisor.supervise(endless_task)
 
-    await supervisor.__aenter__()
-    await asyncio.wait_for(supervisor.__aexit__(None, None, None), 0.1)
+    # note: for test to pass on python 3.10/3.11 the cancel scopes must
+    #   be in the same task.
+    async def supervisor_task():
+        await supervisor.__aenter__()
+        await supervisor.__aexit__(None, None, None)
+
+    await asyncio.wait_for(supervisor_task(), 0.1)
 
 
 async def test_supervisor_task_with_shutdown_hook():
