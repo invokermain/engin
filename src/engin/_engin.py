@@ -1,7 +1,7 @@
 import asyncio
 import logging
-import os
 import signal
+import sys
 from asyncio import Event
 from collections import defaultdict
 from contextlib import AsyncExitStack
@@ -23,7 +23,7 @@ from engin.exceptions import EnginError
 if TYPE_CHECKING:
     from engin._type_utils import TypeId
 
-_OS_IS_WINDOWS = os.name == "nt"
+_OS_IS_WINDOWS = sys.platform == "win32"
 LOG = logging.getLogger("engin")
 
 
@@ -254,29 +254,37 @@ class Engin:
 async def _stop_engin_on_signal(stop_requested_event: Event) -> None:
     """
     A task that waits for a stop signal (SIGINT/SIGTERM) and notifies the given event.
+
+    On unix-like systems we can use asyncio's `loop.add_signal_handler` method but this
+    does not work on Windows as `signal.set_wakeup_fd` is not supported.
+
+    Therefore on Windows we fallback to using `signal.signal` directly.
     """
     if not _OS_IS_WINDOWS:
-        with open_signal_receiver(signal.SIGINT, signal.SIGTERM) as recieved_signals:
-            async for signum in recieved_signals:
-                LOG.debug(f"received {signum.name} signal")
+        with open_signal_receiver(signal.SIGINT, signal.SIGTERM) as received_signals:
+            async for signum in received_signals:
+                LOG.debug(f"received signal: {signum.name}")
                 stop_requested_event.set()
+                break
     else:
-        should_stop = False
 
-        # windows does not support signal_handlers, so this is the workaround
         def ctrlc_handler(sig: int, frame: FrameType | None) -> None:
-            LOG.debug(f"received {signal.SIGINT.name} signal")
-            nonlocal should_stop
-            if should_stop:
-                raise KeyboardInterrupt("Forced keyboard interrupt")
-            should_stop = True
-
-        signal.signal(signal.SIGINT, ctrlc_handler)
-
-        while not should_stop:
-            # In case engin is stopped via external `stop` call.
+            LOG.debug(f"received signal: {signal.Signals(sig).name}")
             if stop_requested_event.is_set():
-                return
-            await asyncio.sleep(0.1)
+                raise KeyboardInterrupt("Forced keyboard interrupt")
+            else:
+                stop_requested_event.set()
 
-        stop_requested_event.set()
+        previous_signal_handler_sigint = signal.signal(signal.SIGINT, ctrlc_handler)
+
+        # technically not needed due to the _OS_IS_WINDOWS checks but keeps mypy happy
+        if hasattr(signal, "SIGBREAK"):
+            previous_signal_handler_sigbreak = signal.signal(signal.SIGBREAK, ctrlc_handler)
+
+        try:
+            await stop_requested_event.wait()
+        finally:
+            # restore orginal signal handlers
+            signal.signal(signal.SIGINT, previous_signal_handler_sigint)
+            if hasattr(signal, "SIGBREAK"):
+                signal.signal(signal.SIGBREAK, previous_signal_handler_sigbreak)
