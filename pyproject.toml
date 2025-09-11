@@ -108,6 +108,7 @@ exclude_lines = [
     "@overload",
     'class .*\bProtocol\b.*\):',
     "raise NotImplementedError",
+    "assert_never\\(",
 ]
 partial_branches = [
     "pragma: no branch",
