@@ -1,7 +1,7 @@
 [project]
 name = "engin"
-version = "0.2.0a1"
-description = "An async-first modular application framework"
+version = "0.2.0"
+description = "A dependency-injection powered application framework"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
