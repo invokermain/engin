@@ -16,14 +16,14 @@ you build and maintain everything from large monoliths to hundreds of microservi
 
 ## Features
 
-The Engin framework gives you:
+Engin provides:
 
 - A fully-featured dependency injection system.
-- A robust application runtime with lifecycle hooks and supervised background tasks.
-- Zero boilerplate code reuse across applications.
-- Integrations for other frameworks such as FastAPI.
-- Full async support.
-- CLI commands to aid local development.
+- A robust runtime with lifecycle hooks and supervised background tasks.
+- Zero-boilerplate code reuse across applications.
+- Integrations for popular frameworks like FastAPI.
+- Full asyncio support.
+- A CLI for development utilities.
 
 
 ## Installation
@@ -36,8 +36,8 @@ Engin is available on PyPI, install it using your favourite dependency manager:
 
 ## Example
 
-A small example which shows some of the features of Engin. This application
-makes 3 http requests and shuts itself down.
+Here’s a minimal example showing how Engin wires dependencies, manages background tasks, and
+handles graceful shutdown.
 
 ```python
 import asyncio
@@ -46,53 +46,38 @@ from engin import Engin, Invoke, Lifecycle, OnException, Provide, Supervisor
 
 
 def httpx_client_factory(lifecycle: Lifecycle) -> AsyncClient:
-    # create our http client
     client = AsyncClient()
-    # this will open and close the AsyncClient as part of the application's lifecycle
-    lifecycle.append(client)
+    lifecycle.append(client)  # easily manage the AsyncClient's lifecycle concerns
     return client
 
 
-async def main(
-    httpx_client: AsyncClient,
-    supervisor: Supervisor,
-) -> None:
-    async def http_requests_task():
-        # simulate a background task
-        for x in range(3):
-            await httpx_client.get("https://httpbin.org/get")
+async def main(httpx_client: AsyncClient, supervisor: Supervisor) -> None:
+    async def long_running_task():
+        while True:
+            await httpx_client.get("https://example.org/")
             await asyncio.sleep(1.0)
-        # raise an error to shutdown the application, normally you wouldn't do this!
-        raise RuntimeError("Forcing shutdown")
 
-    # supervise the http requests as part of the application's lifecycle
-    supervisor.supervise(http_requests_task, on_exception=OnException.SHUTDOWN)
+    supervisor.supervise(long_running_task)  # let the app run the task in a supervised manner
 
 
-# define our modular application
-engin = Engin(Provide(httpx_client_factory), Invoke(main))
+engin = Engin(Provide(httpx_client_factory), Invoke(main))  # define our modular application
 
-# run it!
-asyncio.run(engin.run())
+asyncio.run(engin.run())  # run it!
 ```
 
-With logs enabled this will output:
+Expected output (with logging enabled):
 
-```shell
-INFO:engin:starting engin
-INFO:engin:startup complete
-INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: GET https://httpbin.org/get "HTTP/1.1 200 OK"
-ERROR:engin:supervisor task 'http_requests_task' raised RuntimeError, starting shutdown
-Traceback (most recent call last):
-  File "C:\dev\python\engin\src\engin\_supervisor.py", line 58, in __call__
-    await self.factory()
-  File "C:\dev\python\engin\readme_example.py", line 29, in http_requests_task
-    raise RuntimeError("Forcing shutdown")
-RuntimeError: Forcing shutdown
-INFO:engin:stopping engin
-INFO:engin:shutdown complete
+```
+[INFO]  engin: starting engin
+[INFO]  engin: startup complete
+[INFO]  engin: supervising task: long_running_task
+[INFO]  httpx: HTTP Request: GET https://example.org/ "HTTP/1.1 200 OK"
+[INFO]  httpx: HTTP Request: GET https://example.org/ "HTTP/1.1 200 OK"
+[INFO]  httpx: HTTP Request: GET https://example.org/ "HTTP/1.1 200 OK"
+[DEBUG] engin: received signal: SIGINT
+[DEBUG] engin: supervised task 'long_running_task' was cancelled
+[INFO]  engin: stopping engin
+[INFO]  engin: shutdown complete
 ```
 
 ## Inspiration
@@ -104,5 +89,4 @@ They are both great projects, go check them out.
 
 ## Benchmarks
 
-Automated benchmarks for the Engin framework can be viewed
-[here](https://invokermain.github.io/engin/dev/bench/).
+Automated performance benchmarks for Engin are available [here](https://invokermain.github.io/engin/dev/bench/).
