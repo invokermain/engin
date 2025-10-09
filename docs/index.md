@@ -1,7 +1,7 @@
 # Engin 🏎️
 
-Engin is a lightweight application framework powered by dependency injection, it helps
-you build and maintain large monoliths and microservices.
+Engin is a lightweight application framework powered by dependency injection. It helps
+you build and maintain everything from large monoliths to hundreds of microservices.
 
 
 ## Features
