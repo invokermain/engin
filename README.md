@@ -1,7 +1,7 @@
 # Engin 🏎️
 
 [![codecov](https://codecov.io/gh/invokermain/engin/graph/badge.svg?token=4PJOIMV6IB)](https://codecov.io/gh/invokermain/engin)
-
+![Downloads](https://img.shields.io/pypi/dw/engin)
 ---
 
 **Documentation**: [https://engin.readthedocs.io/](https://engin.readthedocs.io/)
