@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760042705796,
+  "lastUpdate": 1760043604006,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -913,6 +913,44 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00009127930885769829",
             "extra": "mean: 895.2391075999628 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "a132285e5be02857479b29f4712de8f78b5b9e9d",
+          "message": "docs: add downloads badge to README.md",
+          "timestamp": "2025-10-09T21:59:02+01:00",
+          "tree_id": "81a81e99b036266bcf63f93485af4435ecfbe20b",
+          "url": "https://github.com/invokermain/engin/commit/a132285e5be02857479b29f4712de8f78b5b9e9d"
+        },
+        "date": 1760043602811,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2420.966319798503,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000013888039505630106",
+            "extra": "mean: 413.0582039998103 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1127.3141071251478,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00008204110336790108",
+            "extra": "mean: 887.0642118993601 usec\nrounds: 10000"
           }
         ]
       }
