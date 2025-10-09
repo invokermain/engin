@@ -10,6 +10,8 @@ from engin.exceptions import InvalidBlockError
 if TYPE_CHECKING:
     from engin._engin import Engin
 
+_BUILTIN_CLASS_FUNCTIONS = ("__annotate_func__",)
+
 
 def provide(
     func_: Func | None = None, *, scope: str | None = None, override: bool = False
@@ -84,6 +86,8 @@ class Block:
     @classmethod
     def _method_options(cls) -> Iterable[Provide | Invoke]:
         for name, method in inspect.getmembers(cls, inspect.isfunction):
+            if name in _BUILTIN_CLASS_FUNCTIONS:
+                continue
             if option := getattr(method, "_opt", None):
                 if not isinstance(option, Provide | Invoke):
                     raise InvalidBlockError(
