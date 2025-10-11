@@ -6,11 +6,14 @@ from typing import ClassVar, TypeVar
 
 from fastapi.routing import APIRoute
 
-from engin import Assembler, Engin, Entrypoint, Invoke, Option
+from engin import Assembler, Entrypoint, Invoke, Option
 from engin._dependency import Dependency, Supply, _noop
 from engin._graph import DependencyGrapher, Node
 from engin._type_utils import TypeId
 from engin.extensions.asgi import ASGIEngin
+
+if typing.TYPE_CHECKING:
+    from engin._container import Container
 
 try:
     from fastapi import APIRouter, FastAPI
@@ -40,11 +43,17 @@ class FastAPIEngin(ASGIEngin):
     _asgi_type = FastAPI
 
     def graph(self) -> list[Node]:
-        grapher = _FastAPIDependencyGrapher({**self._providers, **self._multiproviders})
+        grapher = _FastAPIDependencyGrapher(
+            {**self._container.providers, **self._container.multiproviders}
+        )
         return grapher.resolve(
             [
                 Entrypoint(self._asgi_type),
-                *[i for i in self._invocations if i.func_name != "_attach_assembler"],
+                *[
+                    i
+                    for i in self._container.invocations
+                    if i.func_name != "_attach_assembler"
+                ],
             ]
         )
 
@@ -188,5 +197,7 @@ class APIRouteDependency(Dependency):
         methods = ",".join(self._route.methods)
         return f"{methods} {self._route.path}"
 
-    def apply(self, engin: Engin) -> None:
-        raise NotImplementedError("APIRouteDependency is not a real dependency")
+    def register(self, container: "Container") -> None:
+        raise NotImplementedError(
+            "APIRouteDependency cannot be registered as is not a real dependency"
+        )
