@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760043604006,
+  "lastUpdate": 1762987466936,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -951,6 +951,44 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00008204110336790108",
             "extra": "mean: 887.0642118993601 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "karvozavr@gmail.com",
+            "name": "Dmitrii Abramov",
+            "username": "karvozavr"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f8cf22e1b5f1bbf97ec09d646a130f76c1a4739",
+          "message": "feat: add port parameter to engin graph command",
+          "timestamp": "2025-11-12T22:39:56Z",
+          "tree_id": "ddf9a2a4319e808f1519031ded5f39e0544a5773",
+          "url": "https://github.com/invokermain/engin/commit/2f8cf22e1b5f1bbf97ec09d646a130f76c1a4739"
+        },
+        "date": 1762987466032,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2420.456361071702,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00001477530220430991",
+            "extra": "mean: 413.1452300000284 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1143.897628479576,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00029315667843533784",
+            "extra": "mean: 874.2041027999691 usec\nrounds: 10000"
           }
         ]
       }
