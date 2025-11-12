@@ -126,6 +126,7 @@ engin graph [OPTIONS]
 
 - `--app`: the path to your application in the format `<module>:<attribute>`, e.g. `myapp.main:engin`. Not
    required if you set a `default-instance` in your `pyproject.toml`.
+- `--port` or `-p`: the port for the local web server to serve the graph on.
 
 #### Example
 

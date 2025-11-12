@@ -33,6 +33,10 @@ def serve_graph(
         str | None,
         typer.Argument(help=COMMON_HELP["app"]),
     ] = None,
+    port: Annotated[
+        int,
+        typer.Option("--port", "-p", help="Port to serve the graph on."),
+    ] = 8123,
 ) -> None:
     """
     Creates a visualisation of your application's dependencies.
@@ -40,6 +44,7 @@ def serve_graph(
     Examples:
 
         1. `engin graph`
+        2. `engin graph app.main:engin -p 8123`
     """
     module_name, _, instance = get_engin_instance(app)
 
