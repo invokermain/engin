@@ -82,7 +82,7 @@ def serve_graph(
             shutdown_thread = threading.Thread(target=_shutdown_thread, args=(httpd,))
             shutdown_thread.start()  # Start shutdown event listener thread
             httpd.serve_forever()  # Will only return when shutdown() is called
-            shutdown_thread.join()  # Ensure shutdown thread has finished 
+            shutdown_thread.join()  # Ensure shutdown thread has finished
 
     server_thread = threading.Thread(target=_start_server)
     server_thread.start()
@@ -91,7 +91,7 @@ def serve_graph(
         wait_for_interrupt()
 
     print("Exiting the server...")
-    shutdown_event.set()  # notify the shutdown 
+    shutdown_event.set()  # notify the shutdown
     server_thread.join()  # Wait for the server thread to finish
 
 
