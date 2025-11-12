@@ -70,19 +70,29 @@ def serve_graph(
         def log_message(self, format: str, *args: Any) -> None:
             return
 
+    shutdown_event = threading.Event()
+
+    def _shutdown_thread(server: socketserver.TCPServer) -> None:
+        shutdown_event.wait()  # Wait until the shutdown event is set
+        server.shutdown()  # This will cause server.serve_forever() to exit
+
     def _start_server() -> None:
-        with socketserver.TCPServer(("localhost", 8123), Handler) as httpd:
-            print("Serving dependency graph on http://localhost:8123")
-            httpd.serve_forever()
+        with socketserver.TCPServer(("localhost", port), Handler) as httpd:
+            print(f"Serving dependency graph on http://localhost:{port}")
+            shutdown_thread = threading.Thread(target=_shutdown_thread, args=(httpd,))
+            shutdown_thread.start()  # Start shutdown event listener thread
+            httpd.serve_forever()  # Will only return when shutdown() is called
+            shutdown_thread.join()  # Ensure shutdown thread has finished 
 
     server_thread = threading.Thread(target=_start_server)
-    server_thread.daemon = True  # Daemonize the thread so it exits when the main script exits
     server_thread.start()
 
     with contextlib.suppress(KeyboardInterrupt):
         wait_for_interrupt()
 
     print("Exiting the server...")
+    shutdown_event.set()  # notify the shutdown 
+    server_thread.join()  # Wait for the server thread to finish
 
 
 def wait_for_interrupt() -> None:
