@@ -10,6 +10,7 @@ from typing import Any, Generic, TypeVar, cast
 
 from typing_extensions import Self
 
+from engin._container import Container
 from engin._dependency import Dependency, Provide, Supply
 from engin._type_utils import TypeId
 from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
@@ -79,31 +80,19 @@ class Assembler:
                 self._multiproviders[type_id].append(provider)
 
     @classmethod
-    def from_mapped_providers(
-        cls,
-        providers: dict[TypeId, Provide[Any]],
-        multiproviders: dict[TypeId, list[Provide[list[Any]]]],
-    ) -> Self:
+    def from_container(cls, container: Container) -> Self:
         """
-        Create an Assembler from pre-mapped providers.
-
-        This method is only exposed for performance reasons in the case that Providers
-        have already been mapped, it is recommended to use the `__init__` method if this
-        is no the case.
+        Create an Assembler from a Container of options.
 
         Args:
-            providers: a dictionary of Providers with the Provider's `return_type_id` as
-              the key.
-            multiproviders: a dictionary of list of Providers with the Provider's
-              `return_type_id` as key. All Providers in the given list must be for the
-              related `return_type_id`.
+            container: the Container instance.
 
         Returns:
             An Assembler instance.
         """
         assembler = cls(tuple())  # noqa: C408
-        assembler._providers = providers
-        assembler._multiproviders = multiproviders
+        assembler._providers = container.providers
+        assembler._multiproviders = container.multiproviders
         return assembler
 
     @property

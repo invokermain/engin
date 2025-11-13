@@ -3,25 +3,22 @@ import logging
 import signal
 import sys
 from asyncio import Event
-from collections import defaultdict
 from contextlib import AsyncExitStack
 from enum import Enum
 from itertools import chain
 from types import FrameType
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from anyio import create_task_group, open_signal_receiver
 
 from engin._assembler import AssembledDependency, Assembler
-from engin._dependency import Invoke, Provide, Supply
+from engin._container import Container
+from engin._dependency import Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._option import Option
 from engin._supervisor import Supervisor
 from engin.exceptions import EnginError
-
-if TYPE_CHECKING:
-    from engin._type_utils import TypeId
 
 _OS_IS_WINDOWS = sys.platform == "win32"
 LOG = logging.getLogger("engin")
@@ -104,26 +101,20 @@ class Engin:
         Args:
             *options: an instance of Provide, Supply, Invoke, Entrypoint or a Block.
         """
-        self._state = _EnginState.IDLE
+        self._state: _EnginState = _EnginState.IDLE
         self._start_complete_event = Event()
         self._stop_requested_event = Event()
         self._stop_complete_event = Event()
         self._exit_stack = AsyncExitStack()
         self._async_context_run_task: asyncio.Task | None = None
-
-        self._providers: dict[TypeId, Provide] = {}
-        self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
-        self._invocations: list[Invoke] = []
+        self._container = Container()
 
         # populates the above
         for option in chain(self._LIB_OPTIONS, options):
-            option.apply(self)
+            option.register(self._container)
 
         # initialise Assembler
-        self._assembler = Assembler.from_mapped_providers(
-            providers=self._providers,
-            multiproviders=self._multiproviders,
-        )
+        self._assembler = Assembler.from_container(self._container)
         self._assembler.add(Supply(self._assembler))
 
     @property
@@ -142,7 +133,8 @@ class Engin:
 
         LOG.info("starting engin")
         assembled_invocations: list[AssembledDependency] = [
-            await self._assembler.assemble(invocation) for invocation in self._invocations
+            await self._assembler.assemble(invocation)
+            for invocation in self._container.invocations
         ]
 
         for invocation in assembled_invocations:
@@ -233,8 +225,10 @@ class Engin:
 
         Returns: a list of Node objects.
         """
-        grapher = DependencyGrapher({**self._providers, **self._multiproviders})
-        return grapher.resolve(self._invocations)
+        grapher = DependencyGrapher(
+            {**self._container.providers, **self._container.multiproviders}
+        )
+        return grapher.resolve(self._container.invocations)
 
     def is_running(self) -> bool:
         return self._state == _EnginState.RUNNING
