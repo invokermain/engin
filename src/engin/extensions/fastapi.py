@@ -53,16 +53,14 @@ T = TypeVar("T")
 
 
 def Inject(interface: type[T]) -> Depends:
-    async def inner(conn: HTTPConnection) -> T:
+    async def __inner_engin_dependency__(conn: HTTPConnection) -> T:
         try:
             assembler: Assembler = conn.app.state.assembler
         except AttributeError:
             raise RuntimeError("Assembler is not attached to Application state") from None
         return await assembler.build(interface)
 
-    dep = Depends(inner)
-    dep.__engin__ = True  # type: ignore[attr-defined]
-    return dep
+    return Depends(__inner_engin_dependency__)
 
 
 class _FastAPIDependencyGrapher(DependencyGrapher):
@@ -181,7 +179,12 @@ class APIRouteDependency(Dependency):
         args = typing.get_args(param.annotation)
         if len(args) != 2:
             return False
-        return isinstance(args[1], Depends) and hasattr(args[1], "__engin__")
+        return (
+            isinstance(args[1], Depends)
+            and (depenency_function := getattr(args[1], "dependency", None)) is not None
+            and inspect.isfunction(depenency_function)
+            and depenency_function.__name__ == "__inner_engin_dependency__"
+        )
 
     @property
     def name(self) -> str:
