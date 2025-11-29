@@ -53,6 +53,7 @@ T = TypeVar("T")
 
 
 def Inject(interface: type[T]) -> Depends:
+    # note: the APIRouteDependency class looks for this function's name
     async def __inner_engin_dependency__(conn: HTTPConnection) -> T:
         try:
             assembler: Assembler = conn.app.state.assembler
