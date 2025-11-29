@@ -1,6 +1,6 @@
 [project]
 name = "engin"
-version = "0.3.0"
+version = "0.3.1"
 description = "A dependency-injection powered application framework"
 readme = "README.md"
 requires-python = ">=3.10"
