@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763988411010,
+  "lastUpdate": 1764422474721,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -1064,6 +1064,44 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00034520678628158333",
             "extra": "mean: 916.975023800056 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "karvozavr@gmail.com",
+            "name": "Dmitrii Abramov",
+            "username": "karvozavr"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6fc1f7ae51094a3861f6d3453683b3cb4e28e83a",
+          "message": "v0.3.1: fix compatibility for fastapi>=0.121.3",
+          "timestamp": "2025-11-29T13:20:23Z",
+          "tree_id": "2e8d9aad9dad4028e8691571720adb4c3dc8972f",
+          "url": "https://github.com/invokermain/engin/commit/6fc1f7ae51094a3861f6d3453683b3cb4e28e83a"
+        },
+        "date": 1764422473898,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2437.4542749421876,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00001948928301233114",
+            "extra": "mean: 410.2641063999933 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1160.48540731163,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00031190327192363095",
+            "extra": "mean: 861.7083797000007 usec\nrounds: 10000"
           }
         ]
       }
