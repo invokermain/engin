@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from typer.testing import CliRunner
 
 from engin import Engin, Invoke, Provide
@@ -24,6 +26,25 @@ def needs_complex_type(custom_type: dict[str, int]) -> None:
 complex_unsatisfied_engin = Engin(
     ABlock,
     Invoke(needs_complex_type),
+)
+
+
+@dataclass
+class A:
+    num: int
+
+
+def make_a(num: int) -> list[A]:
+    return [A(num)]
+
+
+def needs_list_of_a(a: list[A]) -> None:
+    pass
+
+
+multi_unsatisfied_enign = Engin(
+    Provide(make_a),
+    Invoke(needs_list_of_a),
 )
 
 runner = CliRunner()
@@ -56,6 +77,16 @@ def test_check_complex_missing_dependencies():
     assert result.exit_code == 1
     assert "❌ Missing providers found:" in result.output
     assert "dict" in result.output
+
+
+def test_check_deep_missing_dependencies():
+    result = runner.invoke(
+        app=cli,
+        args=["tests.cli.test_check:multi_unsatisfied_enign"],
+    )
+    assert result.exit_code == 1
+    assert "❌ Missing providers found:" in result.output
+    assert "int" in result.output
 
 
 def test_check_invalid_app_path():
