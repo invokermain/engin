@@ -1,10 +1,9 @@
 import inspect
 import typing
 from abc import ABC
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from inspect import Parameter, Signature, isclass, iscoroutinefunction
 from typing import (
-    TYPE_CHECKING,
     Any,
     Generic,
     ParamSpec,
@@ -18,8 +17,10 @@ from engin._introspect import get_first_external_frame
 from engin._option import Option
 from engin._type_utils import TypeId
 
-if TYPE_CHECKING:
-    from engin._engin import Engin
+if typing.TYPE_CHECKING:
+    from collections.abc import Awaitable
+
+    from engin._container import Container
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -117,8 +118,8 @@ class Invoke(Dependency):
     def __init__(self, invocation: Func[P, T]) -> None:
         super().__init__(func=invocation)
 
-    def apply(self, engin: "Engin") -> None:
-        engin._invocations.append(self)
+    def register(self, container: "Container") -> None:
+        container.invocations.append(self)
 
     def __str__(self) -> str:
         return f"Invoke({self.name})"
@@ -222,17 +223,17 @@ class Provide(Dependency[Any, T]):
     def scope(self) -> str | None:
         return self._scope
 
-    def apply(self, engin: "Engin") -> None:
+    def register(self, container: "Container") -> None:
         type_id = self.return_type_id
         if self.is_multiprovider:
-            engin._multiproviders[type_id].append(self)
+            container.multiproviders[type_id].append(self)  # type: ignore[arg-type]
             return
 
-        if type_id not in engin._providers:
-            engin._providers[type_id] = self
+        if type_id not in container.providers:
+            container.providers[type_id] = self
             return
 
-        existing_provider = engin._providers[type_id]
+        existing_provider = container.providers[type_id]
         is_same_package = existing_provider.source_package == self.source_package
 
         # overwriting a dependency from the same package must be explicit
@@ -244,7 +245,7 @@ class Provide(Dependency[Any, T]):
             )
             raise RuntimeError(msg)
 
-        engin._providers[type_id] = self
+        container.providers[type_id] = self
 
     def __hash__(self) -> int:
         return hash(self.return_type_id)

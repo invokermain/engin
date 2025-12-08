@@ -36,7 +36,7 @@ def check_dependencies(
     assembler = instance.assembler
     missing_providers = set()
 
-    for invocation in instance._invocations:
+    for invocation in instance._container.invocations:
         for param_type_id in invocation.parameter_type_ids:
             try:
                 assembler._resolve_providers(param_type_id, set())

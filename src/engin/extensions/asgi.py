@@ -57,8 +57,10 @@ class ASGIEngin(Engin, ASGIType):
         await self.start()
 
     def graph(self) -> list[Node]:
-        grapher = DependencyGrapher({**self._providers, **self._multiproviders})
-        return grapher.resolve([Entrypoint(self._asgi_type), *self._invocations])
+        grapher = DependencyGrapher(
+            {**self._container.providers, **self._container.multiproviders}
+        )
+        return grapher.resolve([Entrypoint(self._asgi_type), *self._container.invocations])
 
 
 class _Rereceive:

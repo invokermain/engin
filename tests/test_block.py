@@ -1,8 +1,7 @@
-from unittest.mock import Mock
-
 import pytest
 
 from engin import Block, Engin, invoke, provide
+from engin._container import Container
 from engin.exceptions import InvalidBlockError
 
 
@@ -36,7 +35,7 @@ def test_block_validation_undecorated_method():
             return "3"
 
     with pytest.raises(InvalidBlockError) as exc_info:
-        MyBlock.apply(Mock())
+        MyBlock.register(Container())
 
     assert "forget" in str(exc_info.value)
 
@@ -49,6 +48,6 @@ def test_block_validation_illegal_decorator():
         provide_str._opt = int
 
     with pytest.raises(InvalidBlockError) as exc_info:
-        MyBlock.apply(Mock())
+        MyBlock.register(Container())
 
     assert "Invoke" in str(exc_info.value)

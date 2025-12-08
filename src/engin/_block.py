@@ -1,16 +1,15 @@
 import inspect
+import typing
 from collections.abc import Callable, Iterable, Sequence
 from itertools import chain
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from engin._dependency import Dependency, Func, Invoke, Provide
 from engin._option import Option
 from engin.exceptions import InvalidBlockError
 
-if TYPE_CHECKING:
-    from engin._engin import Engin
-
-_BUILTIN_CLASS_FUNCTIONS = ("__annotate_func__",)
+if typing.TYPE_CHECKING:
+    from engin._container import Container
 
 
 def provide(
@@ -45,7 +44,7 @@ def invoke(func_: Func | None = None) -> Func | Callable[[Func], Func]:
         return _inner(func_)
 
 
-class Block:
+class Block(Option):
     """
     A Block is a collection of providers and invocations.
 
@@ -76,17 +75,17 @@ class Block:
     options: ClassVar[Sequence[Option]] = []
 
     @classmethod
-    def apply(cls, engin: "Engin") -> None:
+    def register(cls, container: "Container") -> None:
         block_name = cls.name or cls.__name__
         for option in chain(cls.options, cls._method_options()):
             if isinstance(option, Dependency):
                 option._block_name = block_name
-            option.apply(engin)
+            option.register(container)
 
     @classmethod
     def _method_options(cls) -> Iterable[Provide | Invoke]:
         for name, method in inspect.getmembers(cls, inspect.isfunction):
-            if name in _BUILTIN_CLASS_FUNCTIONS:
+            if name[0] == "_":  # skip private or dunder methods
                 continue
             if option := getattr(method, "_opt", None):
                 if not isinstance(option, Provide | Invoke):

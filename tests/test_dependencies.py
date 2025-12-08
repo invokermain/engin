@@ -1,9 +1,9 @@
 from typing import Annotated
-from unittest.mock import Mock
 
 import pytest
 
 from engin import Entrypoint, Invoke, Provide, Supply
+from engin._container import Container
 from tests.deps import int_provider, make_aliased_int, make_int
 
 
@@ -107,37 +107,34 @@ def test_provides_implicit_overrides_providers():
     provide_a = int_provider()
     provide_b = int_provider()
 
-    engin = Mock()
-    engin._providers = {}
+    container = Container()
 
-    provide_a.apply(engin)
+    provide_a.register(container)
 
     with pytest.raises(RuntimeError, match="implicit"):
-        provide_b.apply(engin)
+        provide_b.register(container)
 
 
 def test_provides_implicit_overrides_supply():
     provide_a = Supply(3)
     provide_b = Supply(4)
 
-    engin = Mock()
-    engin._providers = {}
+    container = Container()
 
-    provide_a.apply(engin)
+    provide_a.register(container)
 
     with pytest.raises(RuntimeError, match="implicit"):
-        provide_b.apply(engin)
+        provide_b.register(container)
 
 
 def test_provides_explicit_overrides_allowed():
     provide_a = int_provider()
     provide_b = int_provider(override=True)
 
-    engin = Mock()
-    engin._providers = {}
+    container = Container()
 
-    provide_a.apply(engin)
-    provide_b.apply(engin)
+    provide_a.register(container)
+    provide_b.register(container)
 
 
 def test_provides_implicit_overrides_allowed_when_3rd_party():
@@ -146,11 +143,10 @@ def test_provides_implicit_overrides_allowed_when_3rd_party():
 
     provide_a._source_package = "foo"
 
-    engin = Mock()
-    engin._providers = {}
+    container = Container()
 
-    provide_a.apply(engin)
-    provide_b.apply(engin)
+    provide_a.register(container)
+    provide_b.register(container)
 
 
 def test_provide_as_type():
