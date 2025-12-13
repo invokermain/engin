@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterable, Sequence
 from itertools import chain
 from typing import TYPE_CHECKING, ClassVar
 
-from engin._dependency import Dependency, Func, Invoke, Provide
+from engin._dependency import Decorate, Dependency, Func, Invoke, Provide
 from engin._option import Option
 from engin.exceptions import InvalidBlockError
 
@@ -37,6 +37,23 @@ def invoke(func_: Func | None = None) -> Func | Callable[[Func], Func]:
 
     def _inner(func: Func) -> Func:
         func._opt = Invoke(func)  # type: ignore[attr-defined]
+        return func
+
+    if func_ is None:
+        return _inner
+    else:
+        return _inner(func_)
+
+
+def decorate(
+    func_: Func | None = None, *, override: bool = False
+) -> Func | Callable[[Func], Func]:
+    """
+    A decorator for defining a Decorator in a Block.
+    """
+
+    def _inner(func: Func) -> Func:
+        func._opt = Decorate(func, override=override)  # type: ignore[attr-defined]
         return func
 
     if func_ is None:
@@ -84,22 +101,23 @@ class Block:
             option.apply(engin)
 
     @classmethod
-    def _method_options(cls) -> Iterable[Provide | Invoke]:
+    def _method_options(cls) -> Iterable[Provide | Invoke | Decorate]:
         for name, method in inspect.getmembers(cls, inspect.isfunction):
             if name in _BUILTIN_CLASS_FUNCTIONS:
                 continue
             if option := getattr(method, "_opt", None):
-                if not isinstance(option, Provide | Invoke):
+                if not isinstance(option, Provide | Invoke | Decorate):
                     raise InvalidBlockError(
                         block=cls,
-                        reason="Block option is not an instance of Provide or Invoke",
+                        reason="Block option is not an instance of Provide, "
+                        "Invoke, or Decorate",
                     )
                 yield option
             else:
                 raise InvalidBlockError(
                     block=cls,
                     reason=(
-                        f"Method '{name}' is not a Provider or Invocation, did you "
-                        "forget to decorate it?"
+                        f"Method '{name}' is not a Provider, Invocation, or Decorator, "
+                        "did you forget to decorate it?"
                     ),
                 )

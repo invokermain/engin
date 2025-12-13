@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from engin import Entrypoint, Invoke, Provide, Supply
+from engin import Decorate, Entrypoint, Invoke, Provide, Supply
 from tests.deps import int_provider, make_aliased_int, make_int
 
 
@@ -163,3 +163,103 @@ def test_supply_as_type():
     supply = Supply(3, as_type=float)
     assert supply.return_type is float
     assert supply.signature.return_annotation is float
+
+
+def test_decorate_validates_input_output_type_match():
+    def invalid_decorator(value: int) -> str:
+        return str(value)
+
+    with pytest.raises(ValueError, match="must match"):
+        Decorate(invalid_decorator)
+
+
+def test_decorate_requires_return_type():
+    def no_return_type(value: int):
+        return value
+
+    with pytest.raises(RuntimeError, match="return type hint"):
+        Decorate(no_return_type)
+
+
+def test_decorate_requires_at_least_one_parameter():
+    def no_params() -> int:
+        return 1
+
+    with pytest.raises(ValueError, match="at least one parameter"):
+        Decorate(no_params)
+
+
+def test_decorate_with_non_callable_type_raises():
+    with pytest.raises(ValueError, match="not callable"):
+        Decorate([3])
+
+
+def test_decorate_str_format():
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    decorator = Decorate(add_prefix)
+    assert "add_prefix" in str(decorator)
+    assert "str" in str(decorator)
+
+
+def test_decorate_decorates_type_id():
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    decorator = Decorate(add_prefix)
+    assert decorator.decorates_type_id.type is str
+    assert not decorator.decorates_type_id.multi
+
+
+def test_decorate_apply_adds_to_engin():
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    decorator = Decorate(add_prefix)
+
+    engin = Mock()
+    engin._decorators = {}
+
+    decorator.apply(engin)
+
+    assert decorator.decorates_type_id in engin._decorators
+    assert engin._decorators[decorator.decorates_type_id] is decorator
+
+
+def test_decorate_override_conflict():
+    def add_prefix_a(value: str) -> str:
+        return f"a_{value}"
+
+    def add_prefix_b(value: str) -> str:
+        return f"b_{value}"
+
+    decorator_a = Decorate(add_prefix_a)
+    decorator_b = Decorate(add_prefix_b)
+
+    engin = Mock()
+    engin._decorators = {}
+
+    decorator_a.apply(engin)
+
+    with pytest.raises(RuntimeError, match="conflicts"):
+        decorator_b.apply(engin)
+
+
+def test_decorate_explicit_override_allowed():
+    def add_prefix_a(value: str) -> str:
+        return f"a_{value}"
+
+    def add_prefix_b(value: str) -> str:
+        return f"b_{value}"
+
+    decorator_a = Decorate(add_prefix_a)
+    decorator_b = Decorate(add_prefix_b, override=True)
+
+    engin = Mock()
+    engin._decorators = {}
+
+    decorator_a.apply(engin)
+    decorator_b.apply(engin)
+
+    assert engin._decorators[decorator_a.decorates_type_id] is decorator_b

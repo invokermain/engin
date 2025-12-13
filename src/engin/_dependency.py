@@ -307,3 +307,82 @@ class Supply(Provide, Generic[T]):
 
     def __str__(self) -> str:
         return f"Supply(value={self._value}, type={self.return_type_id})"
+
+
+class Decorate(Dependency[Any, T]):
+    """
+    Decorate a provided type.
+
+    The decorator function takes a value of type T and returns a modified value of
+    the same type T. Decorators are applied after the original provider is called.
+
+    Examples:
+        ```python3
+        def add_prefix(value: str) -> str:
+            return f"prefixed_{value}"
+
+        engin = Engin(
+            Provide(make_str),
+            Decorate(add_prefix),
+        )
+        ```
+    """
+
+    def __init__(
+        self,
+        decorator: Func[P, T],
+        *,
+        override: bool = False,
+    ) -> None:
+        """
+        Decorate a provided type.
+
+        Args:
+            decorator: the decorator function that takes and returns the same type.
+            override: (optional) allow this decorator to override other decorators for
+                the same type.
+        """
+        if not callable(decorator):
+            raise ValueError("Decorator value is not callable")
+        super().__init__(func=decorator)
+        self._override = override
+        self._decorates_type_id = self._resolve_decorates_type()
+        self._return_type_id = self._resolve_return_type_id()
+
+        if self._decorates_type_id != self._return_type_id:
+            raise ValueError(
+                f"Decorator input type '{self._decorates_type_id}' must match "
+                f"output type '{self._return_type_id}'"
+            )
+
+    @property
+    def decorates_type_id(self) -> TypeId:
+        return self._decorates_type_id
+
+    def apply(self, engin: "Engin") -> None:
+        type_id = self._decorates_type_id
+        if type_id in engin._decorators and not self._override:
+            existing = engin._decorators[type_id]
+            raise RuntimeError(
+                f"{self} conflicts with existing {existing}, use override=True to replace"
+            )
+        engin._decorators[type_id] = self
+
+    def _resolve_decorates_type(self) -> TypeId:
+        """First parameter is the type being decorated."""
+        params = list(self._signature.parameters.values())
+        if params and params[0].name == "self":
+            params = params[1:]
+        if not params:
+            raise ValueError("Decorator must have at least one parameter")
+        return TypeId.from_type(params[0].annotation)
+
+    def _resolve_return_type_id(self) -> TypeId:
+        try:
+            return_type = get_type_hints(self._func, include_extras=True)["return"]
+        except KeyError as err:
+            raise RuntimeError(f"Decorator '{self.name}' requires a return type hint") from err
+        return TypeId.from_type(return_type)
+
+    def __str__(self) -> str:
+        return f"Decorate(decorator={self.func_name}, type={self._decorates_type_id})"

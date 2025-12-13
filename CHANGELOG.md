@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.4.0] - 2025-12-13
+
+### Added
+
+- Added a new concept: `Decorate` & `@decorate` which allows you to alter values already
+  provided in the graph. Currently these are global and Engin only supports a single
+  decorator per type. This will be improved in a future release.
+
+
 ## [0.3.1] - 2025-11-30
 
 ### Fixed
@@ -13,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - FastAPI `Depends` [was changed to a frozen dataclass in `v0.121.3`](https://fastapi.tiangolo.com/release-notes/#01213). 
   - Engin no longer attaches a magic `__engin__` attribute to `Depends` for dependency detection in the `engin graph` tool.
   - FastAPI dependencies created via `engin.Inject()` are now identified by a dedicated function name (`__inner_engin_dependency__`).
+
 
 ## [0.3.0] - 2025-11-12
 

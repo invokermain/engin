@@ -218,3 +218,110 @@ async def test_assembler_provider_multi_scope():
             await assembler.build(int)
             await assembler.build(str)
         await assembler.build(int)
+
+
+async def test_assembler_with_decorator():
+    def make_str() -> str:
+        return "foo"
+
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    from engin import Decorate
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        decorators={},
+    )
+    assembler.add(Provide(make_str))
+    assembler._decorators[Decorate(add_prefix).decorates_type_id] = Decorate(add_prefix)
+
+    result = await assembler.build(str)
+    assert result == "prefix_foo"
+
+
+async def test_assembler_decorator_is_cached():
+    call_count = 0
+
+    def make_str() -> str:
+        return "foo"
+
+    def add_prefix(value: str) -> str:
+        nonlocal call_count
+        call_count += 1
+        return f"prefix_{value}"
+
+    from engin import Decorate
+
+    decorator = Decorate(add_prefix)
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        decorators={decorator.decorates_type_id: decorator},
+    )
+    assembler.add(Provide(make_str))
+
+    await assembler.build(str)
+    await assembler.build(str)
+
+    assert call_count == 1
+
+
+async def test_assembler_decorator_receives_provider_output():
+    received_value = None
+
+    def make_str() -> str:
+        return "original"
+
+    def capture_decorator(value: str) -> str:
+        nonlocal received_value
+        received_value = value
+        return f"decorated_{value}"
+
+    from engin import Decorate
+
+    decorator = Decorate(capture_decorator)
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        decorators={decorator.decorates_type_id: decorator},
+    )
+    assembler.add(Provide(make_str))
+
+    result = await assembler.build(str)
+
+    assert received_value == "original"
+    assert result == "decorated_original"
+
+
+async def test_assembler_add_clears_decorated_cache():
+    def make_str() -> str:
+        return "foo"
+
+    def make_str_v2() -> str:
+        return "bar"
+
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    from engin import Decorate
+
+    decorator = Decorate(add_prefix)
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        decorators={decorator.decorates_type_id: decorator},
+    )
+    assembler.add(Provide(make_str))
+
+    result1 = await assembler.build(str)
+    assert result1 == "prefix_foo"
+
+    assembler.add(Provide(make_str_v2))
+
+    result2 = await assembler.build(str)
+    assert result2 == "prefix_bar"

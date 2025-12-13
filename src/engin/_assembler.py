@@ -10,7 +10,7 @@ from typing import Any, Generic, TypeVar, cast
 
 from typing_extensions import Self
 
-from engin._dependency import Dependency, Provide, Supply
+from engin._dependency import Decorate, Dependency, Provide, Supply
 from engin._type_utils import TypeId
 from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
 
@@ -65,7 +65,9 @@ class Assembler:
     def __init__(self, providers: Iterable[Provide]) -> None:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
+        self._decorators: dict[TypeId, Decorate[Any]] = {}
         self._assembled_outputs: dict[TypeId, Any] = {}
+        self._decorated_outputs: dict[TypeId, Any] = {}
         self._lock = asyncio.Lock()
         self._graph_cache: dict[TypeId, list[Provide]] = defaultdict(list)
 
@@ -83,6 +85,7 @@ class Assembler:
         cls,
         providers: dict[TypeId, Provide[Any]],
         multiproviders: dict[TypeId, list[Provide[list[Any]]]],
+        decorators: dict[TypeId, Decorate[Any]] | None = None,
     ) -> Self:
         """
         Create an Assembler from pre-mapped providers.
@@ -97,6 +100,8 @@ class Assembler:
             multiproviders: a dictionary of list of Providers with the Provider's
               `return_type_id` as key. All Providers in the given list must be for the
               related `return_type_id`.
+            decorators: (optional) a dictionary of Decorators with the Decorator's
+              `decorates_type_id` as the key.
 
         Returns:
             An Assembler instance.
@@ -104,6 +109,7 @@ class Assembler:
         assembler = cls(tuple())  # noqa: C408
         assembler._providers = providers
         assembler._multiproviders = multiproviders
+        assembler._decorators = decorators or {}
         return assembler
 
     @property
@@ -135,7 +141,8 @@ class Assembler:
         Build the type from Assembler's factories.
 
         If the type has been built previously the value will be cached and will return the
-        same instance.
+        same instance. If a decorator exists for the type, it will be applied after the
+        provider is called.
 
         Args:
             type_: the type of the desired value to build.
@@ -149,46 +156,64 @@ class Assembler:
             The constructed value.
         """
         type_id = TypeId.from_type(type_)
-        if type_id in self._assembled_outputs:
-            return cast("T", self._assembled_outputs[type_id])
-        if type_id.multi:
-            if type_id not in self._multiproviders:
-                raise TypeNotProvidedError(type_id)
 
-            out = []
-            for provider in self._multiproviders[type_id]:
+        # Check decorated cache first
+        if type_id in self._decorated_outputs:
+            return cast("T", self._decorated_outputs[type_id])
+
+        # Check regular cache (only if no decorator exists)
+        if type_id in self._assembled_outputs and type_id not in self._decorators:
+            return cast("T", self._assembled_outputs[type_id])
+
+        # Build the value from provider if not cached
+        if type_id not in self._assembled_outputs:
+            if type_id.multi:
+                if type_id not in self._multiproviders:
+                    raise TypeNotProvidedError(type_id)
+
+                out = []
+                for provider in self._multiproviders[type_id]:
+                    if provider.scope and provider.scope not in _get_scope():
+                        raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+                    assembled_dependency = await self.assemble(provider)
+                    try:
+                        out.extend(await assembled_dependency())
+                    except Exception as err:
+                        raise ProviderError(
+                            provider=provider,
+                            error_type=type(err),
+                            error_message=str(err),
+                        ) from err
+                self._assembled_outputs[type_id] = out
+            else:
+                if type_id not in self._providers:
+                    raise TypeNotProvidedError(type_id)
+
+                provider = self._providers[type_id]
                 if provider.scope and provider.scope not in _get_scope():
                     raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+
                 assembled_dependency = await self.assemble(provider)
                 try:
-                    out.extend(await assembled_dependency())
+                    value = await assembled_dependency()
                 except Exception as err:
                     raise ProviderError(
                         provider=provider,
                         error_type=type(err),
                         error_message=str(err),
                     ) from err
-            self._assembled_outputs[type_id] = out
-            return out  # type: ignore[return-value]
-        else:
-            if type_id not in self._providers:
-                raise TypeNotProvidedError(type_id)
+                self._assembled_outputs[type_id] = value
 
-            provider = self._providers[type_id]
-            if provider.scope and provider.scope not in _get_scope():
-                raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+        # Apply decorator if exists
+        if type_id in self._decorators:
+            decorator = self._decorators[type_id]
+            decorated_value = await self._apply_decorator(
+                decorator, self._assembled_outputs[type_id]
+            )
+            self._decorated_outputs[type_id] = decorated_value
+            return cast("T", decorated_value)
 
-            assembled_dependency = await self.assemble(provider)
-            try:
-                value = await assembled_dependency()
-            except Exception as err:
-                raise ProviderError(
-                    provider=provider,
-                    error_type=type(err),
-                    error_message=str(err),
-                ) from err
-            self._assembled_outputs[type_id] = value
-            return value  # type: ignore[return-value]
+        return cast("T", self._assembled_outputs[type_id])
 
     def has(self, type_: type[T]) -> bool:
         """
@@ -226,7 +251,28 @@ class Assembler:
             self._providers[type_id] = provider
 
         self._assembled_outputs.clear()
+        self._decorated_outputs.clear()
         self._graph_cache.clear()
+
+    async def _apply_decorator(self, decorator: Decorate[T], value: T) -> T:
+        """
+        Apply a decorator to a value.
+
+        The decorator is assembled and called with the provided value.
+        """
+        type_id = decorator.decorates_type_id
+
+        # Temporarily store the input value so decorator's dependencies can resolve
+        original = self._assembled_outputs.get(type_id)
+        self._assembled_outputs[type_id] = value
+
+        try:
+            assembled = await self.assemble(decorator)
+            return await assembled()
+        finally:
+            # Restore original value if it existed
+            if original is not None:
+                self._assembled_outputs[type_id] = original
 
     def scope(self, scope: str) -> "_ScopeContextManager":
         return _ScopeContextManager(scope=scope, assembler=self)
