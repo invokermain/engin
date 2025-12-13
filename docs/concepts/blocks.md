@@ -54,23 +54,27 @@ asyncio.run(engin.run())  # prints 'hello'
     compositional approach can help you build and manage larger applications.
 
 
-## Defining Providers & Invocations in the Block
+## Defining Providers, Modifiers & Invocations in the Block
 
-Engin ships two decorators: `@provide` & `@invoke` that can be used to define providers
-and invocations within a Block as methods. These decorators mirror the signature of their
-respective classes `Provide` & `Invoke`.
+Engin ships three decorators: `@provide`, `@modify` & `@invoke` that can be used to define
+providers, modifiers and invocations within a Block as methods. These decorators mirror the
+signature of their respective classes `Provide`, `Modify` & `Invoke`.
 
 
 ```python
-from engin import Engin, Block, provide, invoke
+from engin import Engin, Block, provide, modify, invoke
 
 
 # this block is equivalent to the one in the example above
 class ExampleBlock(Block):
     @provide
-    def string_factory() -> str:
+    def string_factory(self) -> str:
         return "hello"
-    
+
+    @modify
+    def add_prefix(self, value: str) -> str:
+        return f"[INFO] {value}"
+
     @invoke
     def print_string(self, string: str) -> None:
        print(string)

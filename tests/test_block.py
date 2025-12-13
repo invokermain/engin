@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from engin import Block, Engin, invoke, provide
+from engin import Block, Engin, invoke, modify, provide
 from engin.exceptions import InvalidBlockError
 
 
@@ -52,3 +52,37 @@ def test_block_validation_illegal_decorator():
         MyBlock.apply(Mock())
 
     assert "Invoke" in str(exc_info.value)
+
+
+def test_block_with_modify():
+    class MyBlock(Block):
+        @provide
+        def provide_str(self) -> str:
+            return "foo"
+
+        @modify
+        def add_prefix(self, value: str) -> str:
+            return f"prefix_{value}"
+
+    my_block = MyBlock()
+
+    options = list(my_block._method_options())
+
+    assert len(options) == 2
+
+
+def test_block_modify_with_override():
+    class MyBlock(Block):
+        @provide
+        def provide_str(self) -> str:
+            return "foo"
+
+        @modify(override=True)
+        def add_prefix(self, value: str) -> str:
+            return f"prefix_{value}"
+
+    my_block = MyBlock()
+
+    options = list(my_block._method_options())
+
+    assert len(options) == 2

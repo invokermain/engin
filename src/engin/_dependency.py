@@ -307,3 +307,82 @@ class Supply(Provide, Generic[T]):
 
     def __str__(self) -> str:
         return f"Supply(value={self._value}, type={self.return_type_id})"
+
+
+class Modify(Dependency[Any, T]):
+    """
+    Modify a provided type.
+
+    The modifier function takes a value of type T and returns a modified value of
+    the same type T. Modifiers are applied after the original provider is called.
+
+    Examples:
+        ```python3
+        def add_prefix(value: str) -> str:
+            return f"prefixed_{value}"
+
+        engin = Engin(
+            Provide(make_str),
+            Modify(add_prefix),
+        )
+        ```
+    """
+
+    def __init__(
+        self,
+        modifier: Func[P, T],
+        *,
+        override: bool = False,
+    ) -> None:
+        """
+        Modify a provided type.
+
+        Args:
+            modifier: the modifier function that takes and returns the same type.
+            override: (optional) allow this modifier to override other modifiers for
+                the same type.
+        """
+        if not callable(modifier):
+            raise ValueError("Modifier value is not callable")
+        super().__init__(func=modifier)
+        self._override = override
+        self._modifies_type_id = self._resolve_modifies_type()
+        self._return_type_id = self._resolve_return_type_id()
+
+        if self._modifies_type_id != self._return_type_id:
+            raise ValueError(
+                f"Modifier input type '{self._modifies_type_id}' must match "
+                f"output type '{self._return_type_id}'"
+            )
+
+    @property
+    def modifies_type_id(self) -> TypeId:
+        return self._modifies_type_id
+
+    def apply(self, engin: "Engin") -> None:
+        type_id = self._modifies_type_id
+        if type_id in engin._modifiers and not self._override:
+            existing = engin._modifiers[type_id]
+            raise RuntimeError(
+                f"{self} conflicts with existing {existing}, use override=True to replace"
+            )
+        engin._modifiers[type_id] = self
+
+    def _resolve_modifies_type(self) -> TypeId:
+        """First parameter is the type being modified."""
+        params = list(self._signature.parameters.values())
+        if params and params[0].name == "self":
+            params = params[1:]
+        if not params:
+            raise ValueError("Modifier must have at least one parameter")
+        return TypeId.from_type(params[0].annotation)
+
+    def _resolve_return_type_id(self) -> TypeId:
+        try:
+            return_type = get_type_hints(self._func, include_extras=True)["return"]
+        except KeyError as err:
+            raise RuntimeError(f"Modifier '{self.name}' requires a return type hint") from err
+        return TypeId.from_type(return_type)
+
+    def __str__(self) -> str:
+        return f"Modify(modifier={self.func_name}, type={self._modifies_type_id})"

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, ClassVar
 from anyio import create_task_group, open_signal_receiver
 
 from engin._assembler import AssembledDependency, Assembler
-from engin._dependency import Invoke, Provide, Supply
+from engin._dependency import Invoke, Modify, Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
 from engin._option import Option
@@ -113,6 +113,7 @@ class Engin:
 
         self._providers: dict[TypeId, Provide] = {}
         self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
+        self._modifiers: dict[TypeId, Modify] = {}
         self._invocations: list[Invoke] = []
 
         # populates the above
@@ -123,6 +124,7 @@ class Engin:
         self._assembler = Assembler.from_mapped_providers(
             providers=self._providers,
             multiproviders=self._multiproviders,
+            modifiers=self._modifiers,
         )
         self._assembler.add(Supply(self._assembler))
 
