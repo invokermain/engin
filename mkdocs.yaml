@@ -39,6 +39,7 @@ nav:
   - Concepts:
       - Engin: "concepts/engin.md"
       - Providers: "concepts/providers.md"
+      - Modifiers: "concepts/modifiers.md"
       - Invocations: "concepts/invocations.md"
       - Blocks: "concepts/blocks.md"
       - Lifecycle: "concepts/lifecycle.md"

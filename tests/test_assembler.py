@@ -218,3 +218,131 @@ async def test_assembler_provider_multi_scope():
             await assembler.build(int)
             await assembler.build(str)
         await assembler.build(int)
+
+
+async def test_assembler_with_modifier():
+    def make_str() -> str:
+        return "foo"
+
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    from engin import Modify
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        modifiers={},
+    )
+    assembler.add(Provide(make_str))
+    assembler._modifiers[Modify(add_prefix).modifies_type_id] = Modify(add_prefix)
+
+    result = await assembler.build(str)
+    assert result == "prefix_foo"
+
+
+async def test_assembler_modifier_is_cached():
+    call_count = 0
+
+    def make_str() -> str:
+        return "foo"
+
+    def add_prefix(value: str) -> str:
+        nonlocal call_count
+        call_count += 1
+        return f"prefix_{value}"
+
+    from engin import Modify
+
+    modifier = Modify(add_prefix)
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        modifiers={modifier.modifies_type_id: modifier},
+    )
+    assembler.add(Provide(make_str))
+
+    await assembler.build(str)
+    await assembler.build(str)
+
+    assert call_count == 1
+
+
+async def test_assembler_modifier_receives_provider_output():
+    received_value = None
+
+    def make_str() -> str:
+        return "original"
+
+    def capture_modifier(value: str) -> str:
+        nonlocal received_value
+        received_value = value
+        return f"modified_{value}"
+
+    from engin import Modify
+
+    modifier = Modify(capture_modifier)
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        modifiers={modifier.modifies_type_id: modifier},
+    )
+    assembler.add(Provide(make_str))
+
+    result = await assembler.build(str)
+
+    assert received_value == "original"
+    assert result == "modified_original"
+
+
+async def test_assembler_add_clears_modified_cache():
+    def make_str() -> str:
+        return "foo"
+
+    def make_str_v2() -> str:
+        return "bar"
+
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    from engin import Modify
+
+    modifier = Modify(add_prefix)
+
+    assembler = Assembler.from_mapped_providers(
+        providers={},
+        multiproviders={},
+        modifiers={modifier.modifies_type_id: modifier},
+    )
+    assembler.add(Provide(make_str))
+
+    result1 = await assembler.build(str)
+    assert result1 == "prefix_foo"
+
+    assembler.add(Provide(make_str_v2))
+
+    result2 = await assembler.build(str)
+    assert result2 == "prefix_bar"
+
+
+async def test_assembler_modifier_with_multiprovider():
+    def make_ints_a() -> list[int]:
+        return [1, 2]
+
+    def make_ints_b() -> list[int]:
+        return [3, 4]
+
+    def double_all(values: list[int]) -> list[int]:
+        return [v * 2 for v in values]
+
+    from engin import Modify
+
+    modifier = Modify(double_all)
+
+    assembler = Assembler([Provide(make_ints_a), Provide(make_ints_b)])
+    assembler._modifiers[modifier.modifies_type_id] = modifier
+
+    result = await assembler.build(list[int])
+    assert result == [2, 4, 6, 8]

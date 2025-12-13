@@ -10,7 +10,7 @@ from typing import Any, Generic, TypeVar, cast
 
 from typing_extensions import Self
 
-from engin._dependency import Dependency, Provide, Supply
+from engin._dependency import Dependency, Modify, Provide, Supply
 from engin._type_utils import TypeId
 from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
 
@@ -65,7 +65,9 @@ class Assembler:
     def __init__(self, providers: Iterable[Provide]) -> None:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
+        self._modifiers: dict[TypeId, Modify[Any]] = {}
         self._assembled_outputs: dict[TypeId, Any] = {}
+        self._modified_outputs: dict[TypeId, Any] = {}
         self._lock = asyncio.Lock()
         self._graph_cache: dict[TypeId, list[Provide]] = defaultdict(list)
 
@@ -83,13 +85,14 @@ class Assembler:
         cls,
         providers: dict[TypeId, Provide[Any]],
         multiproviders: dict[TypeId, list[Provide[list[Any]]]],
+        modifiers: dict[TypeId, Modify[Any]] | None = None,
     ) -> Self:
         """
         Create an Assembler from pre-mapped providers.
 
         This method is only exposed for performance reasons in the case that Providers
         have already been mapped, it is recommended to use the `__init__` method if this
-        is no the case.
+        is not the case.
 
         Args:
             providers: a dictionary of Providers with the Provider's `return_type_id` as
@@ -97,6 +100,8 @@ class Assembler:
             multiproviders: a dictionary of list of Providers with the Provider's
               `return_type_id` as key. All Providers in the given list must be for the
               related `return_type_id`.
+            modifiers: (optional) a dictionary of Modifiers with the Modifier's
+              `modifies_type_id` as the key.
 
         Returns:
             An Assembler instance.
@@ -104,6 +109,7 @@ class Assembler:
         assembler = cls(tuple())  # noqa: C408
         assembler._providers = providers
         assembler._multiproviders = multiproviders
+        assembler._modifiers = modifiers or {}
         return assembler
 
     @property
@@ -135,7 +141,8 @@ class Assembler:
         Build the type from Assembler's factories.
 
         If the type has been built previously the value will be cached and will return the
-        same instance.
+        same instance. If a modifier exists for the type, it will be applied after the
+        provider is called.
 
         Args:
             type_: the type of the desired value to build.
@@ -149,46 +156,62 @@ class Assembler:
             The constructed value.
         """
         type_id = TypeId.from_type(type_)
-        if type_id in self._assembled_outputs:
-            return cast("T", self._assembled_outputs[type_id])
-        if type_id.multi:
-            if type_id not in self._multiproviders:
-                raise TypeNotProvidedError(type_id)
 
-            out = []
-            for provider in self._multiproviders[type_id]:
+        # Check modified cache first
+        if type_id in self._modified_outputs:
+            return cast("T", self._modified_outputs[type_id])
+
+        # Check regular cache (only if no modifier exists)
+        if type_id in self._assembled_outputs and type_id not in self._modifiers:
+            return cast("T", self._assembled_outputs[type_id])
+
+        # Build the value from provider if not cached
+        if type_id not in self._assembled_outputs:
+            if type_id.multi:
+                if type_id not in self._multiproviders:
+                    raise TypeNotProvidedError(type_id)
+
+                out = []
+                for provider in self._multiproviders[type_id]:
+                    if provider.scope and provider.scope not in _get_scope():
+                        raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+                    assembled_dependency = await self.assemble(provider)
+                    try:
+                        out.extend(await assembled_dependency())
+                    except Exception as err:
+                        raise ProviderError(
+                            provider=provider,
+                            error_type=type(err),
+                            error_message=str(err),
+                        ) from err
+                self._assembled_outputs[type_id] = out
+            else:
+                if type_id not in self._providers:
+                    raise TypeNotProvidedError(type_id)
+
+                provider = self._providers[type_id]
                 if provider.scope and provider.scope not in _get_scope():
                     raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+
                 assembled_dependency = await self.assemble(provider)
                 try:
-                    out.extend(await assembled_dependency())
+                    value = await assembled_dependency()
                 except Exception as err:
                     raise ProviderError(
                         provider=provider,
                         error_type=type(err),
                         error_message=str(err),
                     ) from err
-            self._assembled_outputs[type_id] = out
-            return out  # type: ignore[return-value]
-        else:
-            if type_id not in self._providers:
-                raise TypeNotProvidedError(type_id)
+                self._assembled_outputs[type_id] = value
 
-            provider = self._providers[type_id]
-            if provider.scope and provider.scope not in _get_scope():
-                raise NotInScopeError(provider=provider, scope_stack=_get_scope())
+        # Apply modifier if exists
+        if type_id in self._modifiers:
+            assembled = await self.assemble(self._modifiers[type_id])
+            modified_value = await assembled()
+            self._modified_outputs[type_id] = modified_value
+            return cast("T", modified_value)
 
-            assembled_dependency = await self.assemble(provider)
-            try:
-                value = await assembled_dependency()
-            except Exception as err:
-                raise ProviderError(
-                    provider=provider,
-                    error_type=type(err),
-                    error_message=str(err),
-                ) from err
-            self._assembled_outputs[type_id] = value
-            return value  # type: ignore[return-value]
+        return cast("T", self._assembled_outputs[type_id])
 
     def has(self, type_: type[T]) -> bool:
         """
@@ -226,6 +249,7 @@ class Assembler:
             self._providers[type_id] = provider
 
         self._assembled_outputs.clear()
+        self._modified_outputs.clear()
         self._graph_cache.clear()
 
     def scope(self, scope: str) -> "_ScopeContextManager":

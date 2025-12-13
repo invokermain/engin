@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from engin import Entrypoint, Invoke, Provide, Supply
+from engin import Entrypoint, Invoke, Modify, Provide, Supply
 from tests.deps import int_provider, make_aliased_int, make_int
 
 
@@ -163,3 +163,103 @@ def test_supply_as_type():
     supply = Supply(3, as_type=float)
     assert supply.return_type is float
     assert supply.signature.return_annotation is float
+
+
+def test_modify_validates_input_output_type_match():
+    def invalid_modifier(value: int) -> str:
+        return str(value)
+
+    with pytest.raises(ValueError, match="must match"):
+        Modify(invalid_modifier)
+
+
+def test_modify_requires_return_type():
+    def no_return_type(value: int):
+        return value
+
+    with pytest.raises(RuntimeError, match="return type hint"):
+        Modify(no_return_type)
+
+
+def test_modify_requires_at_least_one_parameter():
+    def no_params() -> int:
+        return 1
+
+    with pytest.raises(ValueError, match="at least one parameter"):
+        Modify(no_params)
+
+
+def test_modify_with_non_callable_type_raises():
+    with pytest.raises(ValueError, match="not callable"):
+        Modify([3])
+
+
+def test_modify_str_format():
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    modifier = Modify(add_prefix)
+    assert "add_prefix" in str(modifier)
+    assert "str" in str(modifier)
+
+
+def test_modify_modifies_type_id():
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    modifier = Modify(add_prefix)
+    assert modifier.modifies_type_id.type is str
+    assert not modifier.modifies_type_id.multi
+
+
+def test_modify_apply_adds_to_engin():
+    def add_prefix(value: str) -> str:
+        return f"prefix_{value}"
+
+    modifier = Modify(add_prefix)
+
+    engin = Mock()
+    engin._modifiers = {}
+
+    modifier.apply(engin)
+
+    assert modifier.modifies_type_id in engin._modifiers
+    assert engin._modifiers[modifier.modifies_type_id] is modifier
+
+
+def test_modify_override_conflict():
+    def add_prefix_a(value: str) -> str:
+        return f"a_{value}"
+
+    def add_prefix_b(value: str) -> str:
+        return f"b_{value}"
+
+    modifier_a = Modify(add_prefix_a)
+    modifier_b = Modify(add_prefix_b)
+
+    engin = Mock()
+    engin._modifiers = {}
+
+    modifier_a.apply(engin)
+
+    with pytest.raises(RuntimeError, match="conflicts"):
+        modifier_b.apply(engin)
+
+
+def test_modify_explicit_override_allowed():
+    def add_prefix_a(value: str) -> str:
+        return f"a_{value}"
+
+    def add_prefix_b(value: str) -> str:
+        return f"b_{value}"
+
+    modifier_a = Modify(add_prefix_a)
+    modifier_b = Modify(add_prefix_b, override=True)
+
+    engin = Mock()
+    engin._modifiers = {}
+
+    modifier_a.apply(engin)
+    modifier_b.apply(engin)
+
+    assert engin._modifiers[modifier_a.modifies_type_id] is modifier_b
