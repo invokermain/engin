@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1764422847743,
+  "lastUpdate": 1765796897619,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -1139,6 +1139,43 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00030272605505532284",
             "extra": "mean: 873.1704200000223 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "timothy725@googlemail.com",
+            "name": "invokermain"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "900c846da19191fbc367f563423f9f365343b5b6",
+          "message": "v0.4.0: add support for global modifiers",
+          "timestamp": "2025-12-15T11:07:24Z",
+          "tree_id": "c9e2e5b01b5c819756296e301bdf08617a216fcc",
+          "url": "https://github.com/invokermain/engin/commit/900c846da19191fbc367f563423f9f365343b5b6"
+        },
+        "date": 1765796896641,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2384.262482644114,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000012591306136670352",
+            "extra": "mean: 419.4169087000077 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1131.6045659874903,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006795808694726377",
+            "extra": "mean: 883.7009235000338 usec\nrounds: 10000"
           }
         ]
       }
