@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Annotated
 
@@ -218,6 +219,60 @@ async def test_assembler_provider_multi_scope():
             await assembler.build(int)
             await assembler.build(str)
         await assembler.build(int)
+
+
+async def test_assembler_scoped_provider_reused_in_child_scope():
+    call_count = 0
+
+    def scoped_provider() -> int:
+        nonlocal call_count
+        call_count += 1
+        return call_count
+
+    assembler = Assembler([Provide(scoped_provider, scope="foo")])
+
+    with assembler.scope("foo"):
+        outer = await assembler.build(int)
+        with assembler.scope("bar"):
+            inner = await assembler.build(int)
+
+    assert outer is inner, "scoped provider was rebuilt in child scope instead of being reused"
+    assert call_count == 1, f"expected 1 provider call, got {call_count}"
+
+
+async def test_assembler_scoped_provider_isolated_across_concurrent_tasks():
+    call_count = 0
+
+    def scoped_provider() -> int:
+        nonlocal call_count
+        call_count += 1
+        return call_count
+
+    assembler = Assembler([Provide(scoped_provider, scope="request")])
+
+    task_a_has_built = asyncio.Event()
+    a_value: int | None = None
+    b_value: int | None = None
+
+    async def task_a() -> None:
+        nonlocal a_value
+        with assembler.scope("request"):
+            a_value = await assembler.build(int)
+            task_a_has_built.set()
+            # Yield while still in scope — this is the race window where task_b runs.
+            await asyncio.sleep(0)
+
+    async def task_b() -> None:
+        nonlocal b_value
+        # Wait until task_a has built but not yet exited its scope.
+        await task_a_has_built.wait()
+        with assembler.scope("request"):
+            b_value = await assembler.build(int)
+
+    await asyncio.gather(task_a(), task_b())
+
+    assert call_count == 2, f"expected 2 provider calls, got {call_count}"
+    assert a_value != b_value, "scoped provider was shared across concurrent tasks"
 
 
 async def test_assembler_with_modifier():

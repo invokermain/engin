@@ -18,6 +18,9 @@ LOG = logging.getLogger("engin")
 
 T = TypeVar("T")
 _SCOPE: ContextVar[list[str] | None] = ContextVar("_SCOPE", default=None)
+_SCOPE_CHAIN: ContextVar[list[dict[TypeId, Any]] | None] = ContextVar(
+    "_SCOPE_CHAIN", default=None
+)
 
 
 def _get_scope() -> list[str]:
@@ -156,17 +159,24 @@ class Assembler:
             The constructed value.
         """
         type_id = TypeId.from_type(type_)
+        chain = _SCOPE_CHAIN.get()
 
         # Check modified cache first
         if type_id in self._modified_outputs:
             return cast("T", self._modified_outputs[type_id])
 
-        # Check regular cache (only if no modifier exists)
-        if type_id in self._assembled_outputs and type_id not in self._modifiers:
-            return cast("T", self._assembled_outputs[type_id])
+        # Check scope chain (innermost layer first) then singleton cache
+        if type_id not in self._modifiers:
+            if chain:
+                for layer in chain:
+                    if type_id in layer:
+                        return cast("T", layer[type_id])
+            if type_id in self._assembled_outputs:
+                return cast("T", self._assembled_outputs[type_id])
 
-        # Build the value from provider if not cached
-        if type_id not in self._assembled_outputs:
+        # Build if not yet cached. When a modifier exists we skip the early return above,
+        # so we still need to guard against rebuilding a scoped type already in the chain.
+        if not (chain and any(type_id in layer for layer in chain)) and type_id not in self._assembled_outputs:
             if type_id.multi:
                 if type_id not in self._multiproviders:
                     raise TypeNotProvidedError(type_id)
@@ -202,7 +212,12 @@ class Assembler:
                         error_type=type(err),
                         error_message=str(err),
                     ) from err
-                self._assembled_outputs[type_id] = value
+
+                if provider.scope:
+                    # Store in the innermost (current) scope layer — task-local
+                    chain[0][type_id] = value  # type: ignore[index]
+                else:
+                    self._assembled_outputs[type_id] = value
 
         # Apply modifier if exists
         if type_id in self._modifiers:
@@ -211,6 +226,10 @@ class Assembler:
             self._modified_outputs[type_id] = modified_value
             return cast("T", modified_value)
 
+        if chain:
+            for layer in chain:
+                if type_id in layer:
+                    return cast("T", layer[type_id])
         return cast("T", self._assembled_outputs[type_id])
 
     def has(self, type_: type[T]) -> bool:
@@ -326,14 +345,24 @@ class Assembler:
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
         kwargs = {}
+        chain = _SCOPE_CHAIN.get()
         for param_name, param in signature.parameters.items():
             if param_name == "self":
                 args.append(object())
                 continue
             param_key = TypeId.from_type(param.annotation)
-            if param_key not in self._assembled_outputs:
-                await self._satisfy(param_key)
-            val = self._assembled_outputs[param_key]
+            val = None
+            found_in_chain = False
+            if chain:
+                for layer in chain:
+                    if param_key in layer:
+                        val = layer[param_key]
+                        found_in_chain = True
+                        break
+            if not found_in_chain:
+                if param_key not in self._assembled_outputs:
+                    await self._satisfy(param_key)
+                val = self._assembled_outputs[param_key]
             if param.kind == param.POSITIONAL_ONLY:
                 args.append(val)
             else:
@@ -349,6 +378,8 @@ class _ScopeContextManager:
 
     def __enter__(self) -> Assembler:
         _get_scope().append(self._scope)
+        current = _SCOPE_CHAIN.get()
+        _SCOPE_CHAIN.set([{}, *(current or [])])
         return self._assembler
 
     def __exit__(
@@ -363,4 +394,5 @@ class _ScopeContextManager:
             raise RuntimeError(
                 f"Exited scope '{popped}' is not the expected scope '{self._scope}'"
             )
-        self._assembler._exit_scope(self._scope)
+        chain = _SCOPE_CHAIN.get()
+        _SCOPE_CHAIN.set(chain[1:] or None)
