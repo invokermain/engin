@@ -240,6 +240,45 @@ async def test_assembler_scoped_provider_reused_in_child_scope():
     assert call_count == 1, f"expected 1 provider call, got {call_count}"
 
 
+async def test_assembler_scoped_transitive_dep_isolated_across_concurrent_tasks():
+    """Scoped types resolved as transitive deps (via _satisfy) must also be task-local."""
+    call_count = 0
+
+    def scoped_dep() -> int:
+        nonlocal call_count
+        call_count += 1
+        return call_count
+
+    def dependent_service(dep: int) -> str:
+        return f"service-{dep}"
+
+    assembler = Assembler([Provide(scoped_dep, scope="request"), Provide(dependent_service, scope="request")])
+
+    task_a_has_built = asyncio.Event()
+    a_dep: int | None = None
+    b_dep: int | None = None
+
+    async def task_a() -> None:
+        nonlocal a_dep
+        with assembler.scope("request"):
+            svc = await assembler.build(str)
+            a_dep = int(svc.split("-")[1])
+            task_a_has_built.set()
+            await asyncio.sleep(0)
+
+    async def task_b() -> None:
+        nonlocal b_dep
+        await task_a_has_built.wait()
+        with assembler.scope("request"):
+            svc = await assembler.build(str)
+            b_dep = int(svc.split("-")[1])
+
+    await asyncio.gather(task_a(), task_b())
+
+    assert call_count == 2, f"expected 2 provider calls, got {call_count}"
+    assert a_dep != b_dep, "scoped transitive dep was shared across concurrent tasks"
+
+
 async def test_assembler_scoped_provider_isolated_across_concurrent_tasks():
     call_count = 0
 

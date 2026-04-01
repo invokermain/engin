@@ -274,11 +274,6 @@ class Assembler:
     def scope(self, scope: str) -> "_ScopeContextManager":
         return _ScopeContextManager(scope=scope, assembler=self)
 
-    def _exit_scope(self, scope: str) -> None:
-        for type_id, provider in self._providers.items():
-            if provider.scope == scope:
-                self._assembled_outputs.pop(type_id, None)
-
     def _resolve_providers(self, type_id: TypeId, resolved: set[TypeId]) -> Iterable[Provide]:
         """
         Resolves the chain of providers required to satisfy the provider of a given type.
@@ -318,13 +313,14 @@ class Assembler:
         return resolved_providers
 
     async def _satisfy(self, target: TypeId) -> None:
+        chain = _SCOPE_CHAIN.get()
         for provider in self._resolve_providers(target, set()):
-            if (
-                not provider.is_multiprovider
-                and provider.return_type_id in self._assembled_outputs
-            ):
-                continue
             type_id = provider.return_type_id
+            if not provider.is_multiprovider:
+                if chain and any(type_id in layer for layer in chain):
+                    continue
+                if type_id in self._assembled_outputs:
+                    continue
 
             bound_args = await self._bind_arguments(provider.signature)
             try:
@@ -339,6 +335,8 @@ class Assembler:
                     self._assembled_outputs[type_id].extend(value)
                 else:
                     self._assembled_outputs[type_id] = value
+            elif provider.scope and chain:
+                chain[0][type_id] = value
             else:
                 self._assembled_outputs[type_id] = value
 
@@ -362,7 +360,15 @@ class Assembler:
             if not found_in_chain:
                 if param_key not in self._assembled_outputs:
                     await self._satisfy(param_key)
-                val = self._assembled_outputs[param_key]
+                # After _satisfy, scoped types land in chain[0] rather than assembled_outputs
+                if chain:
+                    for layer in chain:
+                        if param_key in layer:
+                            val = layer[param_key]
+                            found_in_chain = True
+                            break
+                if not found_in_chain:
+                    val = self._assembled_outputs[param_key]
             if param.kind == param.POSITIONAL_ONLY:
                 args.append(val)
             else:
