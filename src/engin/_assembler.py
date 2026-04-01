@@ -176,7 +176,8 @@ class Assembler:
 
         # Build if not yet cached. When a modifier exists we skip the early return above,
         # so we still need to guard against rebuilding a scoped type already in the chain.
-        if not (chain and any(type_id in layer for layer in chain)) and type_id not in self._assembled_outputs:
+        already_in_chain = chain and any(type_id in layer for layer in chain)
+        if not already_in_chain and type_id not in self._assembled_outputs:
             if type_id.multi:
                 if type_id not in self._multiproviders:
                     raise TypeNotProvidedError(type_id)
@@ -194,6 +195,8 @@ class Assembler:
                             error_type=type(err),
                             error_message=str(err),
                         ) from err
+                # TODO: scoped multi-providers are not task-local; they land in the shared
+                # cache and will be visible across concurrent tasks within the same scope.
                 self._assembled_outputs[type_id] = out
             else:
                 if type_id not in self._providers:
@@ -215,7 +218,8 @@ class Assembler:
 
                 if provider.scope:
                     # Store in the innermost (current) scope layer — task-local
-                    chain[0][type_id] = value  # type: ignore[index]
+                    assert chain is not None
+                    chain[0][type_id] = value
                 else:
                     self._assembled_outputs[type_id] = value
 
