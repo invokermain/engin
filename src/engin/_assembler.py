@@ -204,7 +204,38 @@ class Assembler:
             return cast("T", self._modified_outputs[type_id])
 
         if type_id.multi:
-            return await self._build_multi(type_id, scope)
+            # Multiproviders are never scoped, so they always live in _assembled_outputs.
+
+            # Cache hit (skip when modifier exists — need to fall through to apply it)
+            if type_id not in self._modifiers and type_id in self._assembled_outputs:
+                return cast("T", self._assembled_outputs[type_id])
+
+            if type_id not in self._assembled_outputs:
+                providers = self._multiproviders.get(type_id)
+                if not providers:
+                    raise TypeNotProvidedError(type_id)
+
+                out: list[Any] = []
+                for p in providers:
+                    assembled_dep = await self.assemble(p)
+                    try:
+                        out.extend(await assembled_dep())
+                    except Exception as err:
+                        raise ProviderError(
+                            provider=p,
+                            error_type=type(err),
+                            error_message=str(err),
+                        ) from err
+                self._assembled_outputs[type_id] = out
+
+            # Apply modifier if exists
+            if type_id in self._modifiers:
+                assembled = await self.assemble(self._modifiers[type_id])
+                modified_value = await assembled()
+                self._modified_outputs[type_id] = modified_value
+                return cast("T", modified_value)
+
+            return cast("T", self._assembled_outputs[type_id])
 
         # --- single providers ---
 
@@ -302,40 +333,6 @@ class Assembler:
         self._assembled_outputs.clear()
         self._modified_outputs.clear()
         self._graph_cache.clear()
-
-    async def _build_multi(self, type_id: TypeId, scope: "_ScopeNode | None") -> Any:
-        # Multiproviders are never scoped, so they always live in _assembled_outputs.
-
-        # Cache hit (skip when modifier exists — need to fall through to apply it)
-        if type_id not in self._modifiers and type_id in self._assembled_outputs:
-            return self._assembled_outputs[type_id]
-
-        if type_id not in self._assembled_outputs:
-            providers = self._multiproviders.get(type_id)
-            if not providers:
-                raise TypeNotProvidedError(type_id)
-
-            out: list[Any] = []
-            for p in providers:
-                assembled_dep = await self.assemble(p)
-                try:
-                    out.extend(await assembled_dep())
-                except Exception as err:
-                    raise ProviderError(
-                        provider=p,
-                        error_type=type(err),
-                        error_message=str(err),
-                    ) from err
-            self._assembled_outputs[type_id] = out
-
-        # Apply modifier if exists
-        if type_id in self._modifiers:
-            assembled = await self.assemble(self._modifiers[type_id])
-            modified_value = await assembled()
-            self._modified_outputs[type_id] = modified_value
-            return modified_value
-
-        return self._assembled_outputs[type_id]
 
     def _is_scoped_type(self, type_id: TypeId) -> bool:
         provider = self._providers.get(type_id)
