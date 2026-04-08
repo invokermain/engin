@@ -105,7 +105,7 @@ async def bench_assembler() -> None:
     await assembler.build(G)
 
     # reset cache
-    assembler._assembled_outputs = {}
+    assembler._root_node.cache.clear()
 
     await assembler.build(list[Any])
 

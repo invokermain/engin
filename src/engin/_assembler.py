@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import BoundArguments, Signature
 from types import TracebackType
 from typing import Any, Generic, TypeVar, cast
@@ -19,14 +19,32 @@ LOG = logging.getLogger("engin")
 T = TypeVar("T")
 
 
-@dataclass
+@dataclass(slots=True, kw_only=True, frozen=True)
 class _ScopeNode:
+    """
+    A node in a linked list of scopes.
+
+    Each Assembler has a root node whose cache holds globally-scoped values.
+    Entering a named scope pushes a new child node; exiting pops it. Lookups
+    walk the chain from the current node up to the root, so child scopes
+    inherit values cached in parent scopes.
+    """
+
     name: str
-    cache: dict[TypeId, Any]
-    modified_cache: dict[TypeId, Any]
-    parent: "_ScopeNode | None"
+    cache: dict[TypeId, Any] = field(default_factory=dict)
+    modified_cache: dict[TypeId, Any] = field(default_factory=dict)
+    parent: "_ScopeNode | None" = None
 
     def find(self, type_id: TypeId) -> tuple[bool, Any]:
+        """
+        Search for a cached value by walking up the scope chain.
+
+        Args:
+            type_id: the type to look up.
+
+        Returns:
+            A (found, value) tuple.
+        """
         node: _ScopeNode | None = self
         while node is not None:
             if type_id in node.cache:
@@ -35,6 +53,15 @@ class _ScopeNode:
         return False, None
 
     def find_modified(self, type_id: TypeId) -> tuple[bool, Any]:
+        """
+        Search for a modified cached value by walking up the scope chain.
+
+        Args:
+            type_id: the type to look up.
+
+        Returns:
+            A (found, value) tuple.
+        """
         node: _ScopeNode | None = self
         while node is not None:
             if type_id in node.modified_cache:
@@ -43,6 +70,15 @@ class _ScopeNode:
         return False, None
 
     def has_scope(self, name: str) -> bool:
+        """
+        Check whether a named scope exists in the chain.
+
+        Args:
+            name: the scope name to search for.
+
+        Returns:
+            True if the scope is present in the chain, else False.
+        """
         node: _ScopeNode | None = self
         while node is not None:
             if node.name == name:
@@ -52,6 +88,9 @@ class _ScopeNode:
 
     @property
     def scope_names(self) -> list[str]:
+        """
+        Return the names of all scopes in the chain, from innermost to root.
+        """
         names: list[str] = []
         node: _ScopeNode | None = self
         while node is not None:
@@ -100,19 +139,10 @@ class Assembler:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
         self._modifiers: dict[TypeId, Modify[Any]] = {}
-        self._assembled_outputs: dict[TypeId, Any] = {}
-        self._modified_outputs: dict[TypeId, Any] = {}
         self._lock = asyncio.Lock()
         self._graph_cache: dict[TypeId, list[Provide]] = defaultdict(list)
-        self._root = _ScopeNode(
-            name="__root__",
-            cache=self._assembled_outputs,
-            modified_cache=self._modified_outputs,
-            parent=None,
-        )
-        self._scope_var: ContextVar[_ScopeNode] = ContextVar(
-            "_scope", default=self._root
-        )
+        self._root_node = _ScopeNode(name="__root__")
+        self._scope_var: ContextVar[_ScopeNode] = ContextVar("_scope", default=self._root_node)
 
         for provider in providers:
             type_id = provider.return_type_id
@@ -207,7 +237,7 @@ class Assembler:
             return cast("T", val)
 
         if type_id.multi:
-            # Multiproviders are never scoped, so they always live in _assembled_outputs.
+            # Multiproviders are never scoped, so they always live in the root cache.
 
             # Cache hit (skip when modifier exists — need to fall through to apply it)
             if type_id not in self._modifiers:
@@ -215,7 +245,7 @@ class Assembler:
                 if found:
                     return cast("T", val)
 
-            if type_id not in self._assembled_outputs:
+            if type_id not in self._root_node.cache:
                 providers = self._multiproviders.get(type_id)
                 if not providers:
                     raise TypeNotProvidedError(type_id)
@@ -231,16 +261,16 @@ class Assembler:
                             error_type=type(err),
                             error_message=str(err),
                         ) from err
-                self._assembled_outputs[type_id] = out
+                self._root_node.cache[type_id] = out
 
             # Apply modifier if exists
             if type_id in self._modifiers:
                 assembled = await self.assemble(self._modifiers[type_id])
                 modified_value = await assembled()
-                self._modified_outputs[type_id] = modified_value
+                self._root_node.modified_cache[type_id] = modified_value
                 return cast("T", modified_value)
 
-            return cast("T", self._assembled_outputs[type_id])
+            return cast("T", self._root_node.cache[type_id])
 
         # --- single providers ---
 
@@ -277,7 +307,7 @@ class Assembler:
             if provider.scope:
                 scope.cache[type_id] = value
             else:
-                self._assembled_outputs[type_id] = value
+                self._root_node.cache[type_id] = value
 
         # Apply modifier if exists
         if type_id in self._modifiers:
@@ -286,7 +316,7 @@ class Assembler:
             if self._is_scoped_type(type_id):
                 scope.modified_cache[type_id] = modified_value
             else:
-                self._modified_outputs[type_id] = modified_value
+                self._root_node.modified_cache[type_id] = modified_value
             return cast("T", modified_value)
 
         found, val = scope.find(type_id)
@@ -329,8 +359,8 @@ class Assembler:
         else:
             self._providers[type_id] = provider
 
-        self._assembled_outputs.clear()
-        self._modified_outputs.clear()
+        self._root_node.cache.clear()
+        self._root_node.modified_cache.clear()
         self._graph_cache.clear()
 
     def _is_scoped_type(self, type_id: TypeId) -> bool:
@@ -395,14 +425,14 @@ class Assembler:
                 ) from err
 
             if provider.is_multiprovider:
-                if type_id in self._assembled_outputs:
-                    self._assembled_outputs[type_id].extend(value)
+                if type_id in self._root_node.cache:
+                    self._root_node.cache[type_id].extend(value)
                 else:
-                    self._assembled_outputs[type_id] = value
+                    self._root_node.cache[type_id] = value
             elif provider.scope:
                 scope.cache[type_id] = value
             else:
-                self._assembled_outputs[type_id] = value
+                self._root_node.cache[type_id] = value
 
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
@@ -432,14 +462,7 @@ class _ScopeContextManager:
 
     def __enter__(self) -> Assembler:
         scope_var = self._assembler._scope_var
-        scope_var.set(
-            _ScopeNode(
-                name=self._scope,
-                cache={},
-                modified_cache={},
-                parent=scope_var.get(),
-            )
-        )
+        scope_var.set(_ScopeNode(name=self._scope, parent=scope_var.get()))
         return self._assembler
 
     def __exit__(
