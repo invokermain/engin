@@ -412,9 +412,8 @@ class Assembler:
         scope = self._scope_var.get()
         for provider in self._resolve_providers(target, set()):
             type_id = provider.return_type_id
-            if not provider.is_multiprovider:
-                if scope.find(type_id)[0]:
-                    continue
+            if not provider.is_multiprovider and scope.find(type_id)[0]:
+                continue
 
             bound_args = await self._bind_arguments(provider.signature)
             try:
@@ -478,4 +477,6 @@ class _ScopeContextManager:
             raise RuntimeError(
                 f"Exited scope '{node.name}' is not the expected scope '{self._scope}'"
             )
+        if node.parent is None:
+            raise RuntimeError("cannot exit the root scope")
         scope_var.set(node.parent)
