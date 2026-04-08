@@ -17,16 +17,50 @@ from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedErro
 LOG = logging.getLogger("engin")
 
 T = TypeVar("T")
-_SCOPE: ContextVar[list[str] | None] = ContextVar("_SCOPE", default=None)
-_SCOPE_CHAIN: ContextVar[list[dict[TypeId, Any]] | None] = ContextVar(
-    "_SCOPE_CHAIN", default=None
-)
 
 
-def _get_scope() -> list[str]:
-    if _SCOPE.get() is None:
-        _SCOPE.set([])
-    return cast("list[str]", _SCOPE.get())
+@dataclass
+class _ScopeNode:
+    name: str
+    cache: dict[TypeId, Any]
+    modified_cache: dict[TypeId, Any]
+    parent: "_ScopeNode | None"
+
+    def find(self, type_id: TypeId) -> tuple[bool, Any]:
+        node: _ScopeNode | None = self
+        while node is not None:
+            if type_id in node.cache:
+                return True, node.cache[type_id]
+            node = node.parent
+        return False, None
+
+    def find_modified(self, type_id: TypeId) -> tuple[bool, Any]:
+        node: _ScopeNode | None = self
+        while node is not None:
+            if type_id in node.modified_cache:
+                return True, node.modified_cache[type_id]
+            node = node.parent
+        return False, None
+
+    def has_scope(self, name: str) -> bool:
+        node: _ScopeNode | None = self
+        while node is not None:
+            if node.name == name:
+                return True
+            node = node.parent
+        return False
+
+    @property
+    def scope_names(self) -> list[str]:
+        names: list[str] = []
+        node: _ScopeNode | None = self
+        while node is not None:
+            names.append(node.name)
+            node = node.parent
+        return names
+
+
+_SCOPE: ContextVar[_ScopeNode | None] = ContextVar("_SCOPE", default=None)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -159,81 +193,75 @@ class Assembler:
             The constructed value.
         """
         type_id = TypeId.from_type(type_)
-        chain = _SCOPE_CHAIN.get()
+        scope = _SCOPE.get()
 
-        # Check modified cache first
+        # Check modified cache (scope-local first, then global)
+        if scope is not None:
+            found, val = scope.find_modified(type_id)
+            if found:
+                return cast("T", val)
         if type_id in self._modified_outputs:
             return cast("T", self._modified_outputs[type_id])
 
-        # Check scope chain (innermost layer first) then singleton cache
+        if type_id.multi:
+            return await self._build_multi(type_id, scope)
+
+        # --- single providers ---
+
+        # Check scope node cache then global cache (skip when modifier exists —
+        # we need to fall through to apply it)
         if type_id not in self._modifiers:
-            if chain:
-                for layer in chain:
-                    if type_id in layer:
-                        return cast("T", layer[type_id])
+            if scope is not None:
+                found, val = scope.find(type_id)
+                if found:
+                    return cast("T", val)
             if type_id in self._assembled_outputs:
                 return cast("T", self._assembled_outputs[type_id])
 
         # Build if not yet cached. When a modifier exists we skip the early return above,
-        # so we still need to guard against rebuilding a scoped type already in the chain.
-        already_in_chain = chain and any(type_id in layer for layer in chain)
-        if not already_in_chain and type_id not in self._assembled_outputs:
-            if type_id.multi:
-                if type_id not in self._multiproviders:
-                    raise TypeNotProvidedError(type_id)
+        # so we still need to guard against rebuilding a scoped type already in the node.
+        already_in_scope = scope is not None and scope.find(type_id)[0]
+        if not already_in_scope and type_id not in self._assembled_outputs:
+            if type_id not in self._providers:
+                raise TypeNotProvidedError(type_id)
 
-                out = []
-                for provider in self._multiproviders[type_id]:
-                    if provider.scope and provider.scope not in _get_scope():
-                        raise NotInScopeError(provider=provider, scope_stack=_get_scope())
-                    assembled_dependency = await self.assemble(provider)
-                    try:
-                        out.extend(await assembled_dependency())
-                    except Exception as err:
-                        raise ProviderError(
-                            provider=provider,
-                            error_type=type(err),
-                            error_message=str(err),
-                        ) from err
-                # TODO: scoped multi-providers are not task-local; they land in the shared
-                # cache and will be visible across concurrent tasks within the same scope.
-                self._assembled_outputs[type_id] = out
+            provider = self._providers[type_id]
+            if provider.scope and (scope is None or not scope.has_scope(provider.scope)):
+                raise NotInScopeError(
+                    provider=provider,
+                    scope_stack=scope.scope_names if scope else [],
+                )
+
+            assembled_dependency = await self.assemble(provider)
+            try:
+                value = await assembled_dependency()
+            except Exception as err:
+                raise ProviderError(
+                    provider=provider,
+                    error_type=type(err),
+                    error_message=str(err),
+                ) from err
+
+            if provider.scope:
+                assert scope is not None
+                scope.cache[type_id] = value
             else:
-                if type_id not in self._providers:
-                    raise TypeNotProvidedError(type_id)
-
-                provider = self._providers[type_id]
-                if provider.scope and provider.scope not in _get_scope():
-                    raise NotInScopeError(provider=provider, scope_stack=_get_scope())
-
-                assembled_dependency = await self.assemble(provider)
-                try:
-                    value = await assembled_dependency()
-                except Exception as err:
-                    raise ProviderError(
-                        provider=provider,
-                        error_type=type(err),
-                        error_message=str(err),
-                    ) from err
-
-                if provider.scope:
-                    # Store in the innermost (current) scope layer — task-local
-                    assert chain is not None
-                    chain[0][type_id] = value
-                else:
-                    self._assembled_outputs[type_id] = value
+                self._assembled_outputs[type_id] = value
 
         # Apply modifier if exists
         if type_id in self._modifiers:
             assembled = await self.assemble(self._modifiers[type_id])
             modified_value = await assembled()
-            self._modified_outputs[type_id] = modified_value
+            if scope is not None and self._is_scoped_type(type_id):
+                scope.modified_cache[type_id] = modified_value
+            else:
+                self._modified_outputs[type_id] = modified_value
             return cast("T", modified_value)
 
-        if chain:
-            for layer in chain:
-                if type_id in layer:
-                    return cast("T", layer[type_id])
+        if scope is not None:
+            found, val = scope.find(type_id)
+            if found:
+                return cast("T", val)
         return cast("T", self._assembled_outputs[type_id])
 
     def has(self, type_: type[T]) -> bool:
@@ -274,6 +302,44 @@ class Assembler:
         self._assembled_outputs.clear()
         self._modified_outputs.clear()
         self._graph_cache.clear()
+
+    async def _build_multi(self, type_id: TypeId, scope: "_ScopeNode | None") -> Any:
+        # Multiproviders are never scoped, so they always live in _assembled_outputs.
+
+        # Cache hit (skip when modifier exists — need to fall through to apply it)
+        if type_id not in self._modifiers and type_id in self._assembled_outputs:
+            return self._assembled_outputs[type_id]
+
+        if type_id not in self._assembled_outputs:
+            providers = self._multiproviders.get(type_id)
+            if not providers:
+                raise TypeNotProvidedError(type_id)
+
+            out: list[Any] = []
+            for p in providers:
+                assembled_dep = await self.assemble(p)
+                try:
+                    out.extend(await assembled_dep())
+                except Exception as err:
+                    raise ProviderError(
+                        provider=p,
+                        error_type=type(err),
+                        error_message=str(err),
+                    ) from err
+            self._assembled_outputs[type_id] = out
+
+        # Apply modifier if exists
+        if type_id in self._modifiers:
+            assembled = await self.assemble(self._modifiers[type_id])
+            modified_value = await assembled()
+            self._modified_outputs[type_id] = modified_value
+            return modified_value
+
+        return self._assembled_outputs[type_id]
+
+    def _is_scoped_type(self, type_id: TypeId) -> bool:
+        provider = self._providers.get(type_id)
+        return provider is not None and provider.scope is not None
 
     def scope(self, scope: str) -> "_ScopeContextManager":
         return _ScopeContextManager(scope=scope, assembler=self)
@@ -317,11 +383,11 @@ class Assembler:
         return resolved_providers
 
     async def _satisfy(self, target: TypeId) -> None:
-        chain = _SCOPE_CHAIN.get()
+        scope = _SCOPE.get()
         for provider in self._resolve_providers(target, set()):
             type_id = provider.return_type_id
             if not provider.is_multiprovider:
-                if chain and any(type_id in layer for layer in chain):
+                if scope is not None and scope.find(type_id)[0]:
                     continue
                 if type_id in self._assembled_outputs:
                     continue
@@ -339,39 +405,31 @@ class Assembler:
                     self._assembled_outputs[type_id].extend(value)
                 else:
                     self._assembled_outputs[type_id] = value
-            elif provider.scope and chain:
-                chain[0][type_id] = value
+            elif provider.scope and scope is not None:
+                scope.cache[type_id] = value
             else:
                 self._assembled_outputs[type_id] = value
 
     async def _bind_arguments(self, signature: Signature) -> BoundArguments:
         args = []
         kwargs = {}
-        chain = _SCOPE_CHAIN.get()
+        scope = _SCOPE.get()
         for param_name, param in signature.parameters.items():
             if param_name == "self":
                 args.append(object())
                 continue
             param_key = TypeId.from_type(param.annotation)
             val = None
-            found_in_chain = False
-            if chain:
-                for layer in chain:
-                    if param_key in layer:
-                        val = layer[param_key]
-                        found_in_chain = True
-                        break
-            if not found_in_chain:
+            found_in_scope = False
+            if scope is not None:
+                found_in_scope, val = scope.find(param_key)
+            if not found_in_scope:
                 if param_key not in self._assembled_outputs:
                     await self._satisfy(param_key)
-                # After _satisfy, scoped types land in chain[0] rather than assembled_outputs
-                if chain:
-                    for layer in chain:
-                        if param_key in layer:
-                            val = layer[param_key]
-                            found_in_chain = True
-                            break
-                if not found_in_chain:
+                # After _satisfy, scoped types land in scope node
+                if scope is not None:
+                    found_in_scope, val = scope.find(param_key)
+                if not found_in_scope:
                     val = self._assembled_outputs[param_key]
             if param.kind == param.POSITIONAL_ONLY:
                 args.append(val)
@@ -387,9 +445,14 @@ class _ScopeContextManager:
         self._assembler = assembler
 
     def __enter__(self) -> Assembler:
-        _get_scope().append(self._scope)
-        current = _SCOPE_CHAIN.get()
-        _SCOPE_CHAIN.set([{}, *(current or [])])
+        _SCOPE.set(
+            _ScopeNode(
+                name=self._scope,
+                cache={},
+                modified_cache={},
+                parent=_SCOPE.get(),
+            )
+        )
         return self._assembler
 
     def __exit__(
@@ -399,10 +462,10 @@ class _ScopeContextManager:
         traceback: TracebackType | None,
         /,
     ) -> None:
-        popped = _get_scope().pop()
-        if popped != self._scope:
+        node = _SCOPE.get()
+        if node is None or node.name != self._scope:
+            actual = node.name if node else "<no scope>"
             raise RuntimeError(
-                f"Exited scope '{popped}' is not the expected scope '{self._scope}'"
+                f"Exited scope '{actual}' is not the expected scope '{self._scope}'"
             )
-        chain = _SCOPE_CHAIN.get()
-        _SCOPE_CHAIN.set(chain[1:] or None)
+        _SCOPE.set(node.parent)

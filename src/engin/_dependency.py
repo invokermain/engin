@@ -196,6 +196,10 @@ class Provide(Dependency[Any, T]):
         ):
             raise ValueError("A provider cannot depend on its own return type")
 
+        # Validate that scoped multiproviders are not supported.
+        if self._is_multi and self._scope is not None:
+            raise ValueError("Multiproviders cannot be scoped")
+
         # Validate that multiproviders only return a list of one type.
         if self._is_multi:
             args = typing.get_args(self._return_type)
