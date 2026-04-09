@@ -11,8 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a new concept: `Modify` & `@modify` which allows you to alter values already
-  provided in the graph. Currently these are global and Engin only supports a single
-  modifier per type. This will be relaxed in a future release.
+  provided in the graph.
 
 
 ## [0.3.1] - 2025-11-29
