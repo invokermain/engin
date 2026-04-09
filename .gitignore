@@ -165,3 +165,4 @@ cython_debug/
 .idea/
 
 scrap/**
+**.local.**
