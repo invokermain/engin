@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1765796897619,
+  "lastUpdate": 1775733658184,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -1176,6 +1176,44 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0006795808694726377",
             "extra": "mean: 883.7009235000338 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "29f675e2f91435aef2fa1601f1653271a863d2cd",
+          "message": "fix: isolate request-scoped providers across concurrent asyncio tasks",
+          "timestamp": "2026-04-09T12:20:01+01:00",
+          "tree_id": "c89b854919c3d30104e7d097b03f4df666a265bc",
+          "url": "https://github.com/invokermain/engin/commit/29f675e2f91435aef2fa1601f1653271a863d2cd"
+        },
+        "date": 1775733657263,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2098.6935952420426,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000016588248579510984",
+            "extra": "mean: 476.48689749999915 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1116.8018451474168,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0006272727778531724",
+            "extra": "mean: 895.4139934000565 usec\nrounds: 10000"
           }
         ]
       }
