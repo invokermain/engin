@@ -116,6 +116,8 @@ class Engin:
         self._modifiers: dict[TypeId, Modify] = {}
         self._invocations: list[Invoke] = []
         self._block_nodes: dict[str, _ScopeNode] = {}
+        self._block_parents: dict[str, str | None] = {}
+        self._block_scope_stack: list[str] = []
 
         # populates the above (including _block_nodes via Block.apply)
         for option in chain(self._LIB_OPTIONS, options):
@@ -129,18 +131,29 @@ class Engin:
         )
         self._assembler.add(Supply(self._assembler))
 
-        # Wire block scope nodes as children of the root node
+        # Wire block scope nodes into a tree mirroring the block nesting.
+        # Blocks are registered depth-first during apply, so parents are always
+        # inserted before children — iterating in insertion order is safe.
+        wired: dict[str, _ScopeNode] = {}
         for name, block_node in self._block_nodes.items():
-            self._block_nodes[name] = _ScopeNode(
-                name=block_node.name,
+            parent_name = self._block_parents.get(name)
+            if parent_name is not None:
+                parent = wired[parent_name]
+            else:
+                parent = self._assembler._root_node
+            wired[name] = _ScopeNode(
+                name=name,
                 modifiers=block_node.modifiers,
-                parent=self._assembler._root_node,
+                parent=parent,
             )
+        self._block_nodes = wired
 
     def _register_block_scope(self, block_name: str) -> None:
         """Create a persistent scope node for a block (called during Block.apply)."""
         if block_name not in self._block_nodes:
+            parent = self._block_scope_stack[-1] if self._block_scope_stack else None
             self._block_nodes[block_name] = _ScopeNode(name=block_name)
+            self._block_parents[block_name] = parent
 
     @property
     def assembler(self) -> Assembler:

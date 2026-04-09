@@ -1,8 +1,10 @@
+from typing import ClassVar
 from unittest.mock import Mock
 
 import pytest
 
 from engin import Block, Engin, Invoke, Modify, Provide, invoke, modify, provide
+from engin._option import Option
 from engin.exceptions import InvalidBlockError
 
 
@@ -202,3 +204,72 @@ async def test_global_modifier_applied_via_engin():
     await engin.stop()
 
     assert received == "prefix_foo", f"invocation should see modified value, got {received}"
+
+
+async def test_nested_block_modifier_composes_with_outer():
+    """Inner block invocation sees outer block's modifier via scope chain."""
+    received_inner: str | None = None
+    received_outer: str | None = None
+
+    class InnerBlock(Block):
+        @invoke
+        def check_inner(self, value: str) -> None:
+            nonlocal received_inner
+            received_inner = value
+
+    class OuterBlock(Block):
+        options: ClassVar[list[Option]] = [InnerBlock()]
+
+        @modify
+        def upper(self, value: str) -> str:
+            return value.upper()
+
+        @invoke
+        def check_outer(self, value: str) -> None:
+            nonlocal received_outer
+            received_outer = value
+
+    def make_str() -> str:
+        return "foo"
+
+    engin = Engin(Provide(make_str), OuterBlock())
+    await engin.start()
+    await engin.stop()
+
+    assert received_outer == "FOO", (
+        f"outer block should see its own modifier, got {received_outer}"
+    )
+    assert received_inner == "FOO", (
+        f"inner block should see outer block's modifier, got {received_inner}"
+    )
+
+
+async def test_nested_block_modifiers_compose_inner_over_outer():
+    """Inner block modifier composes with outer block modifier."""
+    received: str | None = None
+
+    class InnerBlock(Block):
+        @modify
+        def add_suffix(self, value: str) -> str:
+            return f"{value}!"
+
+        @invoke
+        def check(self, value: str) -> None:
+            nonlocal received
+            received = value
+
+    class OuterBlock(Block):
+        options: ClassVar[list[Option]] = [InnerBlock()]
+
+        @modify
+        def upper(self, value: str) -> str:
+            return value.upper()
+
+    def make_str() -> str:
+        return "foo"
+
+    engin = Engin(Provide(make_str), OuterBlock())
+    await engin.start()
+    await engin.stop()
+
+    assert received == "FOO!", f"inner should see outer then inner modifier, got {received}"
