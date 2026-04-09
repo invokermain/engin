@@ -365,12 +365,21 @@ class Modify(Dependency[Any, T]):
 
     def apply(self, engin: "Engin") -> None:
         type_id = self._modifies_type_id
-        if type_id in engin._modifiers and not self._override:
-            existing = engin._modifiers[type_id]
-            raise RuntimeError(
-                f"{self} conflicts with existing {existing}, use override=True to replace"
-            )
-        engin._modifiers[type_id] = self
+        if self._block_name and self._block_name in engin._block_nodes:
+            block_node = engin._block_nodes[self._block_name]
+            if type_id in block_node.modifiers and not self._override:
+                existing = block_node.modifiers[type_id]
+                raise RuntimeError(
+                    f"{self} conflicts with existing {existing}, use override=True to replace"
+                )
+            block_node.modifiers[type_id] = self
+        else:
+            if type_id in engin._modifiers and not self._override:
+                existing = engin._modifiers[type_id]
+                raise RuntimeError(
+                    f"{self} conflicts with existing {existing}, use override=True to replace"
+                )
+            engin._modifiers[type_id] = self
 
     def _resolve_modifies_type(self) -> TypeId:
         """First parameter is the type being modified."""

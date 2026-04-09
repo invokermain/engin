@@ -95,6 +95,7 @@ class Block:
     @classmethod
     def apply(cls, engin: "Engin") -> None:
         block_name = cls.name or cls.__name__
+        engin._register_block_scope(block_name)
         for option in chain(cls.options, cls._method_options()):
             if isinstance(option, Dependency):
                 option._block_name = block_name

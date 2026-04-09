@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, Any
 
-from engin._dependency import Provide
 from engin._type_utils import TypeId
 
 if TYPE_CHECKING:
     from engin._block import Block
+    from engin._dependency import Modify, Provide
 
 
 class EnginError(Exception):
@@ -53,7 +53,7 @@ class ProviderError(AssemblerError):
 
     def __init__(
         self,
-        provider: Provide[Any],
+        provider: "Provide[Any]",
         error_type: type[Exception],
         error_message: str,
     ) -> None:
@@ -69,12 +69,35 @@ class ProviderError(AssemblerError):
         return self.message
 
 
+class ModifierError(AssemblerError):
+    """
+    Raised when a Modifier errors during Assembly.
+    """
+
+    def __init__(
+        self,
+        modifier: "Modify[Any]",
+        error_type: type[Exception],
+        error_message: str,
+    ) -> None:
+        self.modifier = modifier
+        self.error_type = error_type
+        self.error_message = error_message
+        self.message = (
+            f"modifier '{modifier.name}' errored with error "
+            f"({error_type.__name__}): '{error_message}'"
+        )
+
+    def __str__(self) -> str:
+        return self.message
+
+
 class NotInScopeError(AssemblerError):
     """
     Raised when a Provider is requested outside of its scope.
     """
 
-    def __init__(self, provider: Provide[Any], scope_stack: list[str]) -> None:
+    def __init__(self, provider: "Provide[Any]", scope_stack: list[str]) -> None:
         self.provider = provider
         self.message = (
             f"provider '{provider.name}' was requested outside of its specified scope "
@@ -89,6 +112,7 @@ __all__ = [
     "AssemblerError",
     "EnginError",
     "InvalidBlockError",
+    "ModifierError",
     "NotInScopeError",
     "ProviderError",
     "TypeNotProvidedError",

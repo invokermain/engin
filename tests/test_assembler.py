@@ -331,7 +331,7 @@ async def test_assembler_with_modifier():
         modifiers={},
     )
     assembler.add(Provide(make_str))
-    assembler._modifiers[Modify(add_prefix).modifies_type_id] = Modify(add_prefix)
+    assembler._root_node.modifiers[Modify(add_prefix).modifies_type_id] = Modify(add_prefix)
 
     result = await assembler.build(str)
     assert result == "prefix_foo"
@@ -438,7 +438,7 @@ async def test_assembler_modifier_with_multiprovider():
     modifier = Modify(double_all)
 
     assembler = Assembler([Provide(make_ints_a), Provide(make_ints_b)])
-    assembler._modifiers[modifier.modifies_type_id] = modifier
+    assembler._root_node.modifiers[modifier.modifies_type_id] = modifier
 
     result = await assembler.build(list[int])
     assert result == [2, 4, 6, 8]

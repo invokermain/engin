@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from anyio import create_task_group, open_signal_receiver
 
-from engin._assembler import AssembledDependency, Assembler
+from engin._assembler import AssembledDependency, Assembler, _ScopeNode
 from engin._dependency import Invoke, Modify, Provide, Supply
 from engin._graph import DependencyGrapher, Node
 from engin._lifecycle import Lifecycle
@@ -115,8 +115,9 @@ class Engin:
         self._multiproviders: dict[TypeId, list[Provide]] = defaultdict(list)
         self._modifiers: dict[TypeId, Modify] = {}
         self._invocations: list[Invoke] = []
+        self._block_nodes: dict[str, _ScopeNode] = {}
 
-        # populates the above
+        # populates the above (including _block_nodes via Block.apply)
         for option in chain(self._LIB_OPTIONS, options):
             option.apply(self)
 
@@ -127,6 +128,19 @@ class Engin:
             modifiers=self._modifiers,
         )
         self._assembler.add(Supply(self._assembler))
+
+        # Wire block scope nodes as children of the root node
+        for name, block_node in self._block_nodes.items():
+            self._block_nodes[name] = _ScopeNode(
+                name=block_node.name,
+                modifiers=block_node.modifiers,
+                parent=self._assembler._root_node,
+            )
+
+    def _register_block_scope(self, block_name: str) -> None:
+        """Create a persistent scope node for a block (called during Block.apply)."""
+        if block_name not in self._block_nodes:
+            self._block_nodes[block_name] = _ScopeNode(name=block_name)
 
     @property
     def assembler(self) -> Assembler:
@@ -143,17 +157,37 @@ class Engin:
             raise EnginError("Engin is not idle, unable to start")
 
         LOG.info("starting engin")
-        assembled_invocations: list[AssembledDependency] = [
-            await self._assembler.assemble(invocation) for invocation in self._invocations
-        ]
+        assembled_invocations: list[AssembledDependency] = []
+        for invocation in self._invocations:
+            block_name = invocation.block_name
+            if block_name and block_name in self._block_nodes:
+                token = self._assembler._scope_var.set(self._block_nodes[block_name])
+                try:
+                    assembled_invocations.append(await self._assembler.assemble(invocation))
+                finally:
+                    self._assembler._scope_var.reset(token)
+            else:
+                assembled_invocations.append(await self._assembler.assemble(invocation))
 
-        for invocation in assembled_invocations:
-            try:
-                await invocation()
-            except Exception as err:
-                name = invocation.dependency.name
-                LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
-                raise
+        for assembled in assembled_invocations:
+            block_name = assembled.dependency.block_name
+            if block_name and block_name in self._block_nodes:
+                token = self._assembler._scope_var.set(self._block_nodes[block_name])
+                try:
+                    await assembled()
+                except Exception as err:
+                    name = assembled.dependency.name
+                    LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
+                    raise
+                finally:
+                    self._assembler._scope_var.reset(token)
+            else:
+                try:
+                    await assembled()
+                except Exception as err:
+                    name = assembled.dependency.name
+                    LOG.error(f"invocation '{name}' errored, exiting", exc_info=err)
+                    raise
 
         lifecycle = await self._assembler.build(Lifecycle)
 
