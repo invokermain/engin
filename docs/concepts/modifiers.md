@@ -198,6 +198,43 @@ engin = Engin(
 )
 ```
 
+### Nested block composition
+
+When blocks are nested (a block includes another block via `options`), inner blocks inherit
+modifiers from their outer blocks. If both define a modifier for the same type, the outer
+modifier is applied first and its result is passed to the inner modifier:
+
+```python
+from typing import ClassVar
+from engin import Block, Engin, Provide, modify, invoke
+from engin._option import Option
+
+
+class InnerBlock(Block):
+    @modify
+    def add_suffix(self, value: str) -> str:
+        return f"{value}!"
+
+    @invoke
+    def print_greeting(self, greeting: str) -> None:
+        print(greeting)  # FOO! (outer then inner modifier)
+
+
+class OuterBlock(Block):
+    options: ClassVar[list[Option]] = [InnerBlock()]
+
+    @modify
+    def upper(self, value: str) -> str:
+        return value.upper()
+
+
+engin = Engin(Provide(lambda: "foo", as_type=str), OuterBlock())
+```
+
+In this example, `InnerBlock`'s invocation sees the value after both modifiers are applied:
+`"foo"` → `"FOO"` (outer) → `"FOO!"` (inner). An inner block without its own modifier for
+the type will simply inherit the outer block's modifier.
+
 The `@modify` decorator accepts the same parameters as `Modify`, such as `override=True`:
 
 ```python
