@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775733658184,
+  "lastUpdate": 1776755677946,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -1214,6 +1214,44 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0006272727778531724",
             "extra": "mean: 895.4139934000565 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea0ce8cf1950b2eefec6aac716b560e8e8d3179a",
+          "message": "docs: update CHANGELOG.md (#73)",
+          "timestamp": "2026-04-21T08:13:50+01:00",
+          "tree_id": "51cc52528b0f073e29216128e4259ec00c827759",
+          "url": "https://github.com/invokermain/engin/commit/ea0ce8cf1950b2eefec6aac716b560e8e8d3179a"
+        },
+        "date": 1776755677616,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2485.7551699522455,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000029950102887357918",
+            "extra": "mean: 402.2922338000051 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1160.665877584189,
+            "unit": "iter/sec",
+            "range": "stddev: 0.002061098285631763",
+            "extra": "mean: 861.574393899992 usec\nrounds: 10000"
           }
         ]
       }
