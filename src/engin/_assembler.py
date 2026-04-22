@@ -424,10 +424,9 @@ class Assembler:
                 ) from err
 
             if provider.is_multiprovider:
-                if type_id in self._root_node.cache:
-                    self._root_node.cache[type_id].extend(value)
-                else:
-                    self._root_node.cache[type_id] = value
+                if type_id not in self._root_node.cache:
+                    self._root_node.cache[type_id] = []
+                self._root_node.cache[type_id].extend(value)
             elif provider.scope:
                 scope.cache[type_id] = value
             else:

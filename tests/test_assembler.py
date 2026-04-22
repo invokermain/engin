@@ -4,7 +4,7 @@ from typing import Annotated
 
 import pytest
 
-from engin import Assembler, Entrypoint, Invoke, Provide
+from engin import Assembler, Entrypoint, Invoke, Provide, Supply
 from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
 from tests.deps import int_provider, make_many_int, make_many_int_alt, make_str
 
@@ -133,6 +133,22 @@ async def test_assembler_has_multi():
     assert assembler.has(list[str])
     assert not assembler.has(int)
     assert not assembler.has(str)
+
+
+async def test_assembler_does_not_modify_multiprovider_values():
+    def multidependency_user(values: list[int]) -> int:
+        return 42
+
+    provider = Provide(multidependency_user)
+    providers = [Supply([1]), Supply([2]), provider]
+
+    assembler1 = Assembler(providers)
+    assembler2 = Assembler(providers)
+    await assembler1.assemble(providers[2])
+    await assembler2.assemble(providers[2])
+
+    assert providers[0]._value == [1]
+    assert providers[1]._value == [2]
 
 
 async def test_assembler_add():
