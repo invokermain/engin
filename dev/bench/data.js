@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776755677946,
+  "lastUpdate": 1776892811283,
   "repoUrl": "https://github.com/invokermain/engin",
   "entries": {
     "Benchmark": [
@@ -1252,6 +1252,44 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.002061098285631763",
             "extra": "mean: 861.574393899992 usec\nrounds: 10000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "karvozavr@gmail.com",
+            "name": "Dmitrii Abramov",
+            "username": "karvozavr"
+          },
+          "committer": {
+            "email": "44192816+invokermain@users.noreply.github.com",
+            "name": "Tim OSullivan",
+            "username": "invokermain"
+          },
+          "distinct": true,
+          "id": "4d740012c7ec75fe447c37562b00714298c3fd71",
+          "message": "Assembler no longer modifies multiprovider supplied list",
+          "timestamp": "2026-04-22T22:19:20+01:00",
+          "tree_id": "2eaabf22f8e540c1c2c56946240691d35675abd5",
+          "url": "https://github.com/invokermain/engin/commit/4d740012c7ec75fe447c37562b00714298c3fd71"
+        },
+        "date": 1776892810934,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_assembler",
+            "value": 2525.066647189844,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000013663777440880563",
+            "extra": "mean: 396.02915080000116 usec\nrounds: 10000"
+          },
+          {
+            "name": "tests/benchmarks/test_benchmarks.py::test_bench_engin",
+            "value": 1192.9503686889184,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0010548450721075055",
+            "extra": "mean: 838.2578405998771 usec\nrounds: 10000"
           }
         ]
       }
