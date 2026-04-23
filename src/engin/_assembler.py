@@ -12,7 +12,12 @@ from typing_extensions import Self
 
 from engin._dependency import Dependency, Modify, Provide, Supply
 from engin._type_utils import TypeId
-from engin.exceptions import NotInScopeError, ProviderError, TypeNotProvidedError
+from engin.exceptions import (
+    ModifierError,
+    NotInScopeError,
+    ProviderError,
+    TypeNotProvidedError,
+)
 
 LOG = logging.getLogger("engin")
 
@@ -33,6 +38,7 @@ class _ScopeNode:
     name: str
     cache: dict[TypeId, Any] = field(default_factory=dict)
     modified_cache: dict[TypeId, Any] = field(default_factory=dict)
+    modifiers: dict[TypeId, "Modify[Any]"] = field(default_factory=dict)
     parent: "_ScopeNode | None" = None
 
     def find(self, type_id: TypeId) -> tuple[bool, Any]:
@@ -56,6 +62,10 @@ class _ScopeNode:
         """
         Search for a modified cached value by walking up the scope chain.
 
+        Stops at the first node that owns a modifier for *type_id* so that a
+        child scope with its own modifier does not inherit a parent's cached
+        modified value (the child's modifier must be applied independently).
+
         Args:
             type_id: the type to look up.
 
@@ -66,8 +76,34 @@ class _ScopeNode:
         while node is not None:
             if type_id in node.modified_cache:
                 return True, node.modified_cache[type_id]
+            if type_id in node.modifiers:
+                return False, None
             node = node.parent
         return False, None
+
+    def find_modifier(
+        self, type_id: TypeId, skip: "set[int] | None" = None
+    ) -> tuple["Modify[Any] | None", "_ScopeNode | None"]:
+        """
+        Search for a modifier by walking up the scope chain.
+
+        Args:
+            type_id: the type to look up.
+            skip: optional set of ``id(modifier)`` values to skip (modifiers
+                currently being applied — prevents infinite recursion while
+                still allowing composition with parent-scope modifiers).
+
+        Returns ``(modifier, source_node)`` where *source_node* is the node
+        that owns the modifier, or ``(None, None)`` if no modifier exists.
+        """
+        node: _ScopeNode | None = self
+        while node is not None:
+            if type_id in node.modifiers:
+                mod = node.modifiers[type_id]
+                if skip is None or id(mod) not in skip:
+                    return mod, node
+            node = node.parent
+        return None, None
 
     def has_scope(self, name: str) -> bool:
         """
@@ -138,11 +174,11 @@ class Assembler:
     def __init__(self, providers: Iterable[Provide]) -> None:
         self._providers: dict[TypeId, Provide[Any]] = {}
         self._multiproviders: dict[TypeId, list[Provide[list[Any]]]] = defaultdict(list)
-        self._modifiers: dict[TypeId, Modify[Any]] = {}
         self._lock = asyncio.Lock()
         self._graph_cache: dict[TypeId, list[Provide]] = defaultdict(list)
         self._root_node = _ScopeNode(name="__root__")
         self._scope_var: ContextVar[_ScopeNode] = ContextVar("_scope", default=self._root_node)
+        self._modifiers_on_stack: set[int] = set()
 
         for provider in providers:
             type_id = provider.return_type_id
@@ -182,7 +218,7 @@ class Assembler:
         assembler = cls(tuple())  # noqa: C408
         assembler._providers = providers
         assembler._multiproviders = multiproviders
-        assembler._modifiers = modifiers or {}
+        assembler._root_node.modifiers.update(modifiers or {})
         return assembler
 
     @property
@@ -204,10 +240,38 @@ class Assembler:
             An AssembledDependency, which can be awaited to construct the final value.
         """
         async with self._lock:
-            return AssembledDependency(
-                dependency=dependency,
-                bound_args=await self._bind_arguments(dependency.signature),
-            )
+            return await self._assemble_unlocked(dependency)
+
+    async def _assemble_unlocked(
+        self, dependency: Dependency[Any, T]
+    ) -> AssembledDependency[T]:
+        """Assemble without acquiring the lock. Caller must hold self._lock."""
+        return AssembledDependency(
+            dependency=dependency,
+            bound_args=await self._bind_arguments(dependency.signature),
+        )
+
+    async def _apply_modifier(self, modifier: Modify[T]) -> T:
+        """Apply a modifier, assembling its dependencies first. Caller must hold self._lock.
+
+        Marks the modifier's type as on-stack during execution to prevent infinite
+        recursion when the modifier's own parameters include the type it modifies
+        (mirroring dig's ``decoratorOnStack`` mechanism).
+        """
+        mod_id = id(modifier)
+        self._modifiers_on_stack.add(mod_id)
+        try:
+            assembled = await self._assemble_unlocked(modifier)
+            try:
+                return await assembled()
+            except Exception as err:
+                raise ModifierError(
+                    modifier=modifier,
+                    error_type=type(err),
+                    error_message=str(err),
+                ) from err
+        finally:
+            self._modifiers_on_stack.discard(mod_id)
 
     async def build(self, type_: type[T]) -> T:
         """
@@ -228,8 +292,14 @@ class Assembler:
         Returns:
             The constructed value.
         """
+        async with self._lock:
+            return await self._build_unlocked(type_)
+
+    async def _build_unlocked(self, type_: type[T]) -> T:
+        """Build without acquiring the lock. Caller must hold self._lock."""
         type_id = TypeId.from_type(type_)
         scope = self._scope_var.get()
+        modifier, modifier_source = scope.find_modifier(type_id, skip=self._modifiers_on_stack)
 
         # Check modified cache (walks scope chain up to root)
         found, val = scope.find_modified(type_id)
@@ -240,7 +310,7 @@ class Assembler:
             # Multiproviders are never scoped, so they always live in the root cache.
 
             # Cache hit (skip when modifier exists — need to fall through to apply it)
-            if type_id not in self._modifiers:
+            if modifier is None:
                 found, val = scope.find(type_id)
                 if found:
                     return cast("T", val)
@@ -252,7 +322,7 @@ class Assembler:
 
                 out: list[Any] = []
                 for p in providers:
-                    assembled_dep = await self.assemble(p)
+                    assembled_dep = await self._assemble_unlocked(p)
                     try:
                         out.extend(await assembled_dep())
                     except Exception as err:
@@ -264,10 +334,9 @@ class Assembler:
                 self._root_node.cache[type_id] = out
 
             # Apply modifier if exists
-            if type_id in self._modifiers:
-                assembled = await self.assemble(self._modifiers[type_id])
-                modified_value = await assembled()
-                self._root_node.modified_cache[type_id] = modified_value
+            if modifier is not None and modifier_source is not None:
+                modified_value = await self._apply_modifier(modifier)
+                modifier_source.modified_cache[type_id] = modified_value
                 return cast("T", modified_value)
 
             return cast("T", self._root_node.cache[type_id])
@@ -276,7 +345,7 @@ class Assembler:
 
         # Check scope chain cache (skip when modifier exists — we need to fall through
         # to apply it)
-        if type_id not in self._modifiers:
+        if modifier is None:
             found, val = scope.find(type_id)
             if found:
                 return cast("T", val)
@@ -294,7 +363,7 @@ class Assembler:
                     scope_stack=scope.scope_names,
                 )
 
-            assembled_dependency = await self.assemble(provider)
+            assembled_dependency = await self._assemble_unlocked(provider)
             try:
                 value = await assembled_dependency()
             except Exception as err:
@@ -310,13 +379,12 @@ class Assembler:
                 self._root_node.cache[type_id] = value
 
         # Apply modifier if exists
-        if type_id in self._modifiers:
-            assembled = await self.assemble(self._modifiers[type_id])
-            modified_value = await assembled()
+        if modifier is not None and modifier_source is not None:
+            modified_value = await self._apply_modifier(modifier)
             if self._is_scoped_type(type_id):
                 scope.modified_cache[type_id] = modified_value
             else:
-                self._root_node.modified_cache[type_id] = modified_value
+                modifier_source.modified_cache[type_id] = modified_value
             return cast("T", modified_value)
 
         found, val = scope.find(type_id)
@@ -441,16 +509,48 @@ class Assembler:
                 args.append(object())
                 continue
             param_key = TypeId.from_type(param.annotation)
-            found, val = scope.find(param_key)
-            if not found:
-                await self._satisfy(param_key)
-                found, val = scope.find(param_key)
+            val = await self._resolve_param(scope, param_key)
             if param.kind == param.POSITIONAL_ONLY:
                 args.append(val)
             else:
                 kwargs[param.name] = val
 
         return signature.bind(*args, **kwargs)
+
+    async def _resolve_param(self, scope: _ScopeNode, param_key: TypeId) -> Any:
+        """Resolve a single parameter, applying modifiers if present."""
+        # Skip modifiers currently being applied (on-stack) to avoid infinite
+        # recursion while still allowing composition with parent-scope modifiers.
+        modifier, modifier_source = scope.find_modifier(
+            param_key, skip=self._modifiers_on_stack
+        )
+
+        # Check modified cache first (already-applied modifier)
+        found, val = scope.find_modified(param_key)
+        if found:
+            return val
+
+        # Check raw cache (only return early if no modifier needs applying)
+        if modifier is None:
+            found, val = scope.find(param_key)
+            if found:
+                return val
+
+        # Satisfy the raw value if not yet cached
+        if not scope.find(param_key)[0]:
+            await self._satisfy(param_key)
+
+        # Apply modifier if one exists
+        if modifier is not None and modifier_source is not None:
+            modified_value = await self._apply_modifier(modifier)
+            if self._is_scoped_type(param_key):
+                scope.modified_cache[param_key] = modified_value
+            else:
+                modifier_source.modified_cache[param_key] = modified_value
+            return modified_value
+
+        _, val = scope.find(param_key)
+        return val
 
 
 class _ScopeContextManager:

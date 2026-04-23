@@ -99,10 +99,11 @@ await engin.assembler.build(int)  # returns 2, call_count is still 1
 ```
 
 
-## Only one modifier per type
+## Only one modifier per type per scope
 
-Engin currently supports only one modifier per type. If you register multiple modifiers
-for the same type, you must use `override=True` on the replacement modifier.
+Engin supports one modifier per type at each scope level (global or per-block). If you
+register multiple modifiers for the same type at the same scope level, you must use
+`override=True` on the replacement modifier.
 
 ```python
 from engin import Engin, Modify, Provide
@@ -135,27 +136,104 @@ print(result)  # hello!!!
 ## Using modifiers in Blocks
 
 Within a Block, you can use the `@modify` decorator to define modifiers as methods.
+Modifiers defined inside a Block are **scoped to that block** — they only affect
+resolutions within the block's own invocations and do not affect other blocks or
+top-level invocations.
 
 ```python
-from engin import Block, Engin, modify, provide
+from engin import Block, Engin, Invoke, Provide, modify, invoke
 
 
 class GreetingBlock(Block):
-    @provide
-    def make_greeting(self) -> str:
-        return "hello"
-
     @modify
     def add_excitement(self, greeting: str) -> str:
         return f"{greeting}!"
 
+    @invoke
+    def print_greeting(self, greeting: str) -> None:
+        print(greeting)  # hello! (modified)
 
-engin = Engin(GreetingBlock())
 
-result = await engin.assembler.build(str)
+def print_raw(greeting: str) -> None:
+    print(greeting)  # hello (unmodified)
 
-print(result)  # hello!
+
+def make_greeting() -> str:
+    return "hello"
+
+
+engin = Engin(Provide(make_greeting), GreetingBlock(), Invoke(print_raw))
 ```
+
+In this example, `GreetingBlock`'s `print_greeting` invocation sees the modified value
+`"hello!"`, while the top-level `print_raw` invocation sees the raw value `"hello"`.
+
+### Composing with global modifiers
+
+Block modifiers compose with global modifiers. When both exist for the same type, the
+block modifier receives the globally-modified value as its input:
+
+```python
+from engin import Block, Engin, Modify, Provide, modify, invoke
+
+
+def add_prefix(value: str) -> str:
+    return f"[INFO] {value}"
+
+
+class GreetingBlock(Block):
+    @modify
+    def upper(self, value: str) -> str:
+        return value.upper()
+
+    @invoke
+    def print_greeting(self, greeting: str) -> None:
+        print(greeting)  # [INFO] HELLO (global then block modifier)
+
+
+engin = Engin(
+    Provide(lambda: "hello", as_type=str),
+    Modify(add_prefix),
+    GreetingBlock(),
+)
+```
+
+### Nested block composition
+
+When blocks are nested (a block includes another block via `options`), inner blocks inherit
+modifiers from their outer blocks. If both define a modifier for the same type, the outer
+modifier is applied first and its result is passed to the inner modifier:
+
+```python
+from typing import ClassVar
+from engin import Block, Engin, Provide, modify, invoke
+from engin._option import Option
+
+
+class InnerBlock(Block):
+    @modify
+    def add_suffix(self, value: str) -> str:
+        return f"{value}!"
+
+    @invoke
+    def print_greeting(self, greeting: str) -> None:
+        print(greeting)  # FOO! (outer then inner modifier)
+
+
+class OuterBlock(Block):
+    options: ClassVar[list[Option]] = [InnerBlock()]
+
+    @modify
+    def upper(self, value: str) -> str:
+        return value.upper()
+
+
+engin = Engin(Provide(lambda: "foo", as_type=str), OuterBlock())
+```
+
+In this example, `InnerBlock`'s invocation sees the value after both modifiers are applied:
+`"foo"` → `"FOO"` (outer) → `"FOO!"` (inner). An inner block without its own modifier for
+the type will simply inherit the outer block's modifier.
 
 The `@modify` decorator accepts the same parameters as `Modify`, such as `override=True`:
 

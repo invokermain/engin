@@ -95,10 +95,15 @@ class Block:
     @classmethod
     def apply(cls, engin: "Engin") -> None:
         block_name = cls.name or cls.__name__
-        for option in chain(cls.options, cls._method_options()):
-            if isinstance(option, Dependency):
-                option._block_name = block_name
-            option.apply(engin)
+        engin._register_block_scope(block_name)
+        engin._block_scope_stack.append(block_name)
+        try:
+            for option in chain(cls.options, cls._method_options()):
+                if isinstance(option, Dependency):
+                    option._block_name = block_name
+                option.apply(engin)
+        finally:
+            engin._block_scope_stack.pop()
 
     @classmethod
     def _method_options(cls) -> Iterable[Provide | Invoke | Modify]:

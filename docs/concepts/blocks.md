@@ -85,3 +85,9 @@ class ExampleBlock(Block):
     The `self` parameter in these methods is replaced with an empty object at runtime so
     should not be used. Blocks do not need to be instantiated to be passed to Engin as an
     option.
+
+!!!tip
+
+    Modifiers defined inside a Block are **scoped to that block** — they only affect
+    resolutions within the block's own invocations. See the
+    [modifiers documentation](modifiers.md#using-modifiers-in-blocks) for details.
